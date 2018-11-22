@@ -120,4 +120,10 @@ defmodule Rill.Messaging.Message.Metadata do
       :time
     ]
   end
+
+  @doc "Builds metadata instance and sets existing fields based on `data`"
+  @spec build(data :: map() | struct()) :: %__MODULE__{}
+  def build(data \\ %{}) do
+    MapCopy.copy_existing(%__MODULE__{}, data)
+  end
 end

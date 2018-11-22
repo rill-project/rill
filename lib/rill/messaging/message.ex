@@ -93,8 +93,22 @@ defmodule Rill.Messaging.Message do
     Metadata.follows?(metadata, other_metadata)
   end
 
-  # build
-  # set_attributes
+  @doc "Builds struct for `struct_name`"
+  @spec build(struct_name :: module(), data :: map(), metadata :: map()) ::
+          struct()
+  def build(struct_name, data \\ nil, metadata \\ nil) do
+    data = data || %{}
+
+    metadata =
+      if is_nil(metadata),
+        do: %Metadata{},
+        else: Metadata.build(metadata)
+
+    instance = struct(struct_name)
+    {new_instance, _} = MapCopy.copy_existing(instance, data)
+
+    Map.put(new_instance, :metadata, metadata)
+  end
 
   defp to_atom(value) when is_atom(value), do: value
   defp to_atom(value) when is_binary(value), do: String.to_atom(value)
