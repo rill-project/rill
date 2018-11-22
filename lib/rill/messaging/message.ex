@@ -110,6 +110,85 @@ defmodule Rill.Messaging.Message do
     Map.put(new_instance, :metadata, metadata)
   end
 
+  @doc "Builds struct for `struct_name` with `correlation_stream_name` set"
+  @spec correlate(
+          struct_name :: module(),
+          correlation_stream_name :: String.t()
+        ) :: struct()
+  def correlate(struct_name, correlation_stream_name) do
+    map = build(struct_name)
+
+    metadata =
+      Map.put(map.metadata, :correlation_stream_name, correlation_stream_name)
+
+    Map.put(map, :metadata, metadata)
+  end
+
+  @type copy_option_metadata :: {:metadata, nil | %Metadata{}}
+  @spec copy(
+          source :: struct(),
+          receiver :: struct(),
+          opts :: [copy_option_metadata()]
+        ) :: struct()
+  def copy(%{} = source, %{} = receiver, opts \\ []) do
+    metadata = Keyword.get(opts, :metadata)
+    {new_receiver, _} = MapCopy.copy_existing(receiver, source)
+
+    if is_nil(metadata) do
+      new_receiver
+    else
+      {new_metadata, _} = MapCopy.copy_existing(new_receiver.metadata, metadata)
+      Map.put(new_receiver, :metadata, new_metadata)
+    end
+  end
+
+  @spec follow(
+          preceding_message :: struct(),
+          subsequent_message :: struct()
+        ) :: struct()
+  def follow(%{} = preceding_message, %{} = subsequent_message) do
+    struct_name = subsequent_message.__struct__
+    follow(struct_name, preceding_message, subsequent_message)
+  end
+
+  @spec follow(
+          struct_name :: module(),
+          preceding_message :: struct()
+        ) :: struct()
+  def follow(struct_name, %{} = preceding_message) do
+    follow(struct_name, preceding_message, struct_name)
+  end
+
+  @spec follow(
+          struct_name :: module(),
+          preceding_message :: struct(),
+          subsequent_message :: module()
+        ) :: struct()
+  def follow(struct_name, preceding_message, subsequent_message)
+      when is_atom(subsequent_message) do
+    subsequent_message = build(subsequent_message)
+    follow(struct_name, preceding_message, subsequent_message)
+  end
+
+  @spec follow(
+          struct_name :: module(),
+          preceding_message :: struct(),
+          subsequent_message :: struct()
+        ) :: struct()
+  def follow(struct_name, %{} = preceding_message, %{} = subsequent_message)
+      when is_atom(struct_name) do
+    {subsequent_message, _} =
+      MapCopy.copy_existing(subsequent_message, preceding_message)
+
+    metadata =
+      Metadata.follow(
+        subsequent_message.metadata,
+        preceding_message.metadata
+      )
+
+    Map.put(subsequent_message, :metadata, metadata)
+  end
+
   defp to_atom(value) when is_atom(value), do: value
   defp to_atom(value) when is_binary(value), do: String.to_atom(value)
 end
