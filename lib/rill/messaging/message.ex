@@ -110,6 +110,15 @@ defmodule Rill.Messaging.Message do
     Map.put(new_instance, :metadata, metadata)
   end
 
+  def build_metadata(nil), do: %Metadata{}
+
+  @spec build_metadata(metadata :: %Metadata{} | nil) :: %Metadata{}
+  def build_metadata(%Metadata{} = metadata) do
+    metadata
+    |> Metadata.to_map()
+    |> Metadata.build()
+  end
+
   @doc "Builds struct for `struct_name` with `correlation_stream_name` set"
   @spec correlate(
           struct_name :: module(),
