@@ -23,7 +23,7 @@ defmodule Rill.MessageStore.MessageData.Read do
 
   @spec build(data :: map()) :: %__MODULE__{}
   def build(%{} = data) do
-    {read, _} = MapCopy.copy_existing(%__MODULE__{}, map)
+    {read, _} = MapCopy.copy_existing(%__MODULE__{}, data)
     read
   end
 end

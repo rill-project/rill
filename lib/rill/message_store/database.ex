@@ -1,6 +1,6 @@
 defmodule Rill.MessageStore.Database do
-  alias Rill.MessageData.Read
-  alias Rill.MessageData.Write
+  alias Rill.MessageStore.MessageData.Read
+  alias Rill.MessageStore.MessageData.Write
   alias Rill.MessageStore.ExpectedVersion
 
   @type get_opts ::

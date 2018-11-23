@@ -3,6 +3,8 @@ defmodule Rill.MessageStore.ExpectedVersion do
     defexception [:message]
   end
 
+  alias Rill.MessageStore.NoStream
+
   @type t :: :no_stream | nil | non_neg_integer()
   @type canonical :: -1 | non_neg_integer()
 

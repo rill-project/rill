@@ -10,7 +10,7 @@ defmodule Rill.MessageStore.MessageData.Write do
 
   @spec build(data :: map()) :: %__MODULE__{}
   def build(%{} = data) do
-    {write, _} = MapCopy.copy_existing(%__MODULE__{}, map)
+    {write, _} = MapCopy.copy_existing(%__MODULE__{}, data)
     write
   end
 end

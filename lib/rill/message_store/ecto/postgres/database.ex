@@ -31,6 +31,17 @@ defmodule Rill.MessageStore.Ecto.Postgres.Database do
     # TODO: Extract result
   end
 
+  @impl Rill.MessageStore.Database
+  def get_last(_session, stream_name)
+      when is_binary(stream_name) do
+    # TODO: Implement
+  end
+
+  @impl Rill.MessageStore.Database
+  def put(_session, opts) when is_list(opts) do
+    # TODO: Implement
+  end
+
   @spec constrain_condition(condition :: String.t() | nil) :: String.t() | nil
   def constrain_condition(nil), do: nil
 
