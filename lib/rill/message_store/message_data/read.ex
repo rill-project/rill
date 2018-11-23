@@ -26,4 +26,9 @@ defmodule Rill.MessageStore.MessageData.Read do
     {read, _} = MapCopy.copy_existing(%__MODULE__{}, data)
     read
   end
+
+  @spec to_map(read :: %__MODULE__{}) :: map()
+  def to_map(%__MODULE__{} = read) do
+    Map.from_struct(read)
+  end
 end

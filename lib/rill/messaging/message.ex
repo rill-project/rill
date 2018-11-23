@@ -32,6 +32,16 @@ defmodule Rill.Messaging.Message do
 
     quote location: :keep do
       defstruct(unquote(attrs))
+
+      defimpl Rill.Schema.DataStructure do
+        def to_map(data), do: @for.to_map(data)
+      end
+
+      def to_map(%__MODULE__{} = data) do
+        Rill.Messaging.Message.to_map(data)
+      end
+
+      defoverridable to_map: 1
     end
   end
 
@@ -76,7 +86,7 @@ defmodule Rill.Messaging.Message do
 
   @spec canonize_name(name :: String.t()) :: String.t()
   def canonize_name(name) do
-    Recase.to_snake(name)
+    Rill.Casing.to_snake(name)
   end
 
   @spec struct_name(msg :: message_or_type()) :: String.t()

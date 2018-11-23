@@ -3,6 +3,6 @@ defmodule Rill.Messaging.Category do
   def normalize(category) do
     category
     |> to_string()
-    |> Recase.to_camel()
+    |> Rill.Casing.to_camel()
   end
 end
