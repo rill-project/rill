@@ -133,11 +133,11 @@ defmodule Rill.Messaging.Message do
     Map.put(map, :metadata, metadata)
   end
 
-  @type copy_option_metadata :: {:metadata, nil | %Metadata{}}
+  @type copy_opts :: {:metadata, nil | %Metadata{}}
   @spec copy(
           source :: struct(),
           receiver :: struct(),
-          opts :: [copy_option_metadata()]
+          opts :: [copy_opts()]
         ) :: struct()
   def copy(%{} = source, %{} = receiver, opts \\ []) do
     metadata = Keyword.get(opts, :metadata)

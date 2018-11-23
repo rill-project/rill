@@ -20,4 +20,10 @@ defmodule Rill.MessageStore.MessageData.Read do
           global_position: pos_integer(),
           time: NaiveDateTime.t()
         }
+
+  @spec build(data :: map()) :: %__MODULE__{}
+  def build(%{} = data) do
+    {read, _} = MapCopy.copy_existing(%__MODULE__{}, map)
+    read
+  end
 end

@@ -3,10 +3,14 @@ defmodule Rill.MessageStore.StreamName do
     defexception [:message]
   end
 
+  @type stream_name_opts(
+          {:type, String.t() | nil}
+          | {:types, [String.t()] | nil}
+        )
   @spec stream_name(
           category_name :: String.t(),
           id :: String.t() | nil,
-          opts :: [type: nil | String.t(), types: nil | [String.t()]]
+          opts :: [stream_name_opts()]
         ) :: boolean()
   def stream_name(category_name), do: stream_name(category_name, nil, [])
   def stream_name(category_name, id), do: stream_name(category_name, id, [])
