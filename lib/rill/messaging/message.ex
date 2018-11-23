@@ -189,6 +189,13 @@ defmodule Rill.Messaging.Message do
     Map.put(subsequent_message, :metadata, metadata)
   end
 
+  @spec to_map(msg :: struct()) :: map()
+  def to_map(%{id: _, metadata: _} = msg) do
+    msg
+    |> Map.from_struct()
+    |> Map.drop([:id, :metadata])
+  end
+
   defp to_atom(value) when is_atom(value), do: value
   defp to_atom(value) when is_binary(value), do: String.to_atom(value)
 end

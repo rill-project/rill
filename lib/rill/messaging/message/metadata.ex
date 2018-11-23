@@ -126,4 +126,8 @@ defmodule Rill.Messaging.Message.Metadata do
   def build(data \\ %{}) do
     MapCopy.copy_existing(%__MODULE__{}, data)
   end
+
+  def to_map(%__MODULE__{} = metadata) do
+    Map.from_struct(metadata)
+  end
 end
