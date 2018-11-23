@@ -10,6 +10,7 @@ defmodule Rill.MessageStore.Ecto.Postgres.Database do
 
   alias Rill.MessageStore.Ecto.Postgres.Session
   alias Rill.MessageStore.StreamName
+  alias Rill.MessageStore.MessageData.Write
 
   @sql_params "$1::varchar, $2::bigint, $3::bigint, $4::varchar"
 
@@ -38,7 +39,9 @@ defmodule Rill.MessageStore.Ecto.Postgres.Database do
   end
 
   @impl Rill.MessageStore.Database
-  def put(_session, opts) when is_list(opts) do
+  def put(session, %Write{} = msg, stream_name, opts)
+      when is_binary(stream_name) and is_list(opts) do
+    repo = Session.get(session)
     # TODO: Implement
   end
 

@@ -19,5 +19,10 @@ defmodule Rill.MessageStore.Database do
   @type put_opts ::
           {:expected_version, ExpectedVersion.t()}
           | {:identifier_get, (() -> String.t()) | nil}
-  @callback put(session :: term(), opts :: [put_opts()]) :: %Write{}
+  @callback put(
+              session :: term(),
+              msg :: %Write{},
+              stream_name :: String.t(),
+              opts :: [put_opts()]
+            ) :: non_neg_integer()
 end
