@@ -27,6 +27,7 @@ defmodule Rill.MessageStore.Memory.Database do
       when is_binary(stream_name) do
     memory_session = Session.get(session)
     # TODO: Implement
+    nil
   end
 
   @impl Rill.MessageStore.Database
@@ -34,5 +35,6 @@ defmodule Rill.MessageStore.Memory.Database do
       when is_binary(stream_name) and is_list(opts) do
     memory_session = Session.get(session)
     # TODO: Implement
+    0
   end
 end
