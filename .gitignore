@@ -25,3 +25,4 @@ rill-*.tar
 mix.lock
 .envrc
 .ruby-version
+.tool-versions
