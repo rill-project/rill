@@ -3,43 +3,25 @@ defmodule Rill.MessageStore.MessageData.Transform.Map.JSON do
 
   @spec write(data :: map()) :: String.t()
   def write(%{} = data) do
-    data =
-      if is_nil(data[:metadata]) do
-        data
-      else
-        metadata = Casing.to_camel(data[:metadata])
-        Map.put(data, :metadata, metadata)
-      end
-
     data
     |> Casing.to_camel()
     |> json_encode!()
   end
 
-  def read(text) when is_binary(text) do
-    data =
-      text
-      |> json_decode!()
-      |> Casing.to_snake()
+  @spec read(data :: String.t() | map()) :: map()
+  def read(text) when is_binary(text), do: text |> json_decode!() |> read()
 
-    data =
-      if is_nil(data["metadata"]) do
-        data
-      else
-        metadata =
-          data["metadata"]
-          |> Casing.to_snake()
-          |> to_atom_keys()
-
-        Map.put(data, "metadata", metadata)
-      end
-
-    to_atom_keys(data)
+  def read(%{} = data) do
+    data
+    |> Casing.to_snake()
+    |> to_atom_keys()
   end
 
   def to_atom_keys(%{} = data) do
     data
-    |> Enum.map(fn {key, value} -> {String.to_atom(key), value} end)
+    |> Enum.map(fn {key, value} ->
+      {key |> to_string() |> String.to_atom(), value}
+    end)
     |> Map.new()
   end
 
