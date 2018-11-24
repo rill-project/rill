@@ -88,12 +88,9 @@ defmodule Rill.MessageStore.Ecto.Postgres.Database do
     params = [id, stream_name, type, data, metadata, expected_version]
 
     repo
-    |> Ecto.Adapters.SQL.query!(@sql_put, params)
+    |> execute(@sql_put, params)
     |> Map.fetch!(:rows)
     |> convert_position()
-  rescue
-    error in Postgrex.Error -> raise_known_error(error)
-    error -> raise error
   end
 
   @spec constrain_condition(condition :: String.t() | nil) :: String.t() | nil
@@ -119,19 +116,7 @@ defmodule Rill.MessageStore.Ecto.Postgres.Database do
 
   @spec convert(rows :: [row()]) :: [row_map()]
   def convert(rows) do
-    rows
-    |> Enum.map(fn row ->
-      map = convert_row(row)
-
-      time = NaiveDateTime.from_iso8601!(map.time)
-      data = Deserialize.data(map.data)
-      metadata = Deserialize.metadata(map.metadata)
-
-      map
-      |> Map.put(:time, time)
-      |> Map.put(:data, data)
-      |> Map.put(:metadata, metadata)
-    end)
+    Enum.map(rows, &convert_row/1)
   end
 
   @spec convert_position(rows :: nil | [] | [[non_neg_integer()]]) ::
@@ -146,6 +131,9 @@ defmodule Rill.MessageStore.Ecto.Postgres.Database do
   def convert_row(row) do
     [id, stream_name, type, position, global_position, data, metadata, time] =
       row
+
+    data = Deserialize.data(data)
+    metadata = Deserialize.metadata(metadata)
 
     %{
       id: id,
@@ -163,11 +151,19 @@ defmodule Rill.MessageStore.Ecto.Postgres.Database do
   def raise_known_error(error) do
     message = to_string(error.postgres.message)
 
-    if String.starts_with?(message, @wrong_version),
-      do:
-        raise(ExpectedVersion.Error,
-          message: message,
-          else: raise(error)
-        )
+    if String.starts_with?(message, @wrong_version) do
+      raise ExpectedVersion.Error, message: message
+    else
+      raise(error)
+    end
+  end
+
+  @spec execute(repo :: atom(), sql :: String.t(), params :: list()) ::
+          non_neg_integer()
+  def execute(repo, sql, params) do
+    Ecto.Adapters.SQL.query!(repo, sql, params)
+  rescue
+    error in Postgrex.Error -> raise_known_error(error)
+    error -> raise error
   end
 end
