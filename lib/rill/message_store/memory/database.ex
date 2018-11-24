@@ -16,25 +16,25 @@ defmodule Rill.MessageStore.Memory.Database do
 
   @impl Rill.MessageStore.Database
   def get(session, stream_name, opts)
-      when is_binary(stream_name) and is_list(opts) do
-    memory_session = Session.get(session)
-    # TODO: Implement
-    []
+  when is_binary(stream_name) and is_list(opts) do
+    server_call session, {:get, stream_name, opts}
   end
 
   @impl Rill.MessageStore.Database
   def get_last(session, stream_name)
-      when is_binary(stream_name) do
-    memory_session = Session.get(session)
-    # TODO: Implement
-    nil
+  when is_binary(stream_name) do
+    server_call session, {:get_last, stream_name}
   end
 
   @impl Rill.MessageStore.Database
   def put(session, %Write{} = msg, stream_name, opts)
-      when is_binary(stream_name) and is_list(opts) do
-    memory_session = Session.get(session)
-    # TODO: Implement
-    0
+  when is_binary(stream_name) and is_list(opts) do
+    server_call session, {:put, msg, stream_name, opts}
+  end
+
+  # just a wrapper for calling genserver
+  defp server_call(session, params) when is_tuple(params) do
+    {:ok, result} = GenServer.call(Session.get(session), params)
+    result
   end
 end
