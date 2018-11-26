@@ -49,6 +49,21 @@ end
 
 Run.run()
 tmp = %Foo{name: "foo", age: 213}
-MessageStore.write(tmp, "cacca-456")
-MessageStore.read("foo-123", position: 2, batch_size: 1)|>Enum.map(fn m -> m end)
+MessageStore.write(tmp, "foo-123")
+MessageStore.read("foo-123", position: 0, batch_size: 1)|>Enum.map(fn m -> m end)
+
+defmodule Foo do
+  use Rill.Messaging.Message
+  defmessage([:name, :age])
+end
+
+defmodule MessageStore do
+  use Rill.MessageStore.Memory, namespace: NameSpace
+end
+
+defmodule Run do
+  def run do
+    Rill.MessageStore.Memory.Server.start_link(nil, name: NameSpace)
+  end
+end
 ```
