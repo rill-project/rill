@@ -11,10 +11,12 @@ defmodule Rill.MessageStore.Ecto.Postgres.Database do
   alias Rill.MessageStore.Ecto.Postgres.Session
   alias Rill.MessageStore.StreamName
   alias Rill.MessageStore.MessageData.Write
+  alias Rill.MessageStore.MessageData.Read
   alias Rill.MessageStore.Ecto.Postgres.Database.Serialize
   alias Rill.MessageStore.Ecto.Postgres.Database.Deserialize
   alias Rill.Identifier.UUID.Random, as: Identifier
   alias Rill.MessageStore.ExpectedVersion
+  alias Rill.Messaging.Message.Transform
 
   @type row :: list()
   @type row_map :: %{
@@ -135,7 +137,7 @@ defmodule Rill.MessageStore.Ecto.Postgres.Database do
     data = Deserialize.data(data)
     metadata = Deserialize.metadata(metadata)
 
-    %{
+    record = %{
       id: id,
       stream_name: stream_name,
       type: type,
@@ -145,6 +147,10 @@ defmodule Rill.MessageStore.Ecto.Postgres.Database do
       metadata: metadata,
       time: time
     }
+
+    record
+    |> Transform.read()
+    |> Read.build()
   end
 
   @spec raise_known_error(error :: %Postgrex.Error{}) :: no_return()

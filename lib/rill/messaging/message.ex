@@ -4,6 +4,7 @@ defmodule Rill.Messaging.Message do
   end
 
   alias Rill.Messaging.Message.Metadata
+  alias Rill.MessageStore.MessageData.Read
 
   @type message_or_type :: String.t() | atom() | struct()
 
@@ -31,6 +32,7 @@ defmodule Rill.Messaging.Message do
       |> Macro.escape()
 
     quote location: :keep do
+      @behaviour Rill.Schema
       defstruct(unquote(attrs))
 
       defimpl Rill.Schema.DataStructure do
@@ -41,7 +43,15 @@ defmodule Rill.Messaging.Message do
         Rill.Messaging.Message.to_map(data)
       end
 
-      defoverridable to_map: 1
+      def build(%Read{} = message_data) do
+        data = message_data.data
+        metadata = message_data.metadata
+
+        msg = unquote(__MODULE__).build(__MODULE__, data, metadata)
+        Map.put(msg, :id, message_data.id)
+      end
+
+      defoverridable Rill.Schema
     end
   end
 
