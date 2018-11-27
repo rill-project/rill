@@ -34,7 +34,6 @@ defmodule Rill.MessageStore do
               message :: struct(),
               stream_name :: String.t()
             ) :: non_neg_integer()
-  # @optional_callbacks read: 4, write: 4, write_initial: 3
 
   @spec read(
           session :: term(),

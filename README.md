@@ -67,3 +67,54 @@ defmodule Run do
   end
 end
 ```
+
+## Store
+
+```elixir
+
+defmodule Person do
+  defstruct [:name, :age]
+end
+
+defmodule Renamed do
+  use Rill.Messaging.Message
+  defmessage([:name])
+end
+
+defmodule PersonProjection do
+  use Rill.EntityProjection
+
+  @impl Rill.EntityProjection
+  deftranslate apply(%Renamed{} = renamed, person) do
+    Map.put(person, :name, renamed.name)
+  end
+end
+
+defmodule Repo do
+  use Ecto.Repo,
+    otp_app: :rill,
+    adapter: Ecto.Adapters.Postgres
+
+  def init(_, opts) do
+    {:ok, Keyword.put(opts, :url, System.get_env("DATABASE_URL"))}
+  end
+end
+
+defmodule MessageStore do
+  use Rill.MessageStore.Ecto.Postgres, repo: Repo
+end
+
+defmodule Store do
+  use Rill.EntityStore,
+    entity: %Person{},
+    category: "person",
+    projection: PersonProjection,
+    accessor: MessageStore
+end
+
+defmodule Run do
+  def run do
+    Repo.start_link(name: Repo)
+  end
+end
+```

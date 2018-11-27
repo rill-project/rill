@@ -39,31 +39,18 @@ defmodule Rill.MessageStore.Ecto.Postgres do
 
   defmacro __using__(repo: repo) do
     quote location: :keep do
-      @spec read(
-              stream_name :: String.t(),
-              opts :: [Rill.MessageStore.Database.get_opts()],
-              fun ::
-                nil | (%Rill.MessageStore.MessageData.Read{}, term() -> term())
-            ) :: Enumerable.t() | term()
+      @behaviour Rill.MessageStore.Accessor
+
       def read(stream_name, opts \\ [], fun \\ nil) do
         repo = unquote(repo)
         unquote(__MODULE__).read(repo, stream_name, opts, fun)
       end
 
-      @spec write(
-              message_or_messages :: struct() | [struct()],
-              stream_name :: String.t(),
-              opts :: [Rill.MessageStore.write_option()]
-            ) :: non_neg_integer()
       def write(message_or_messages, stream_name, opts \\ []) do
         repo = unquote(repo)
         unquote(__MODULE__).write(repo, message_or_messages, stream_name, opts)
       end
 
-      @spec write_initial(
-              message :: struct(),
-              stream_name :: String.t()
-            ) :: non_neg_integer()
       def write_initial(message, stream_name) do
         repo = unquote(repo)
         unquote(__MODULE__).write_initial(repo, message, stream_name)

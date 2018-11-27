@@ -35,11 +35,16 @@ defmodule Rill.MessageStore.StreamName do
         list -> Enum.join(list, "+")
       end
 
-    case {is_nil(type_list), is_nil(id)} do
-      {nil, nil} -> category_name
-      {nil, _} -> "#{category_name}-#{id}"
-      {_, _} -> "#{category_name}:#{type_list}-#{id}"
-    end
+    name = category_name
+
+    name =
+      if is_nil(type_list),
+        do: name,
+        else: "#{name}:#{type_list}"
+
+    if is_nil(id),
+      do: name,
+      else: "#{name}-#{id}"
   end
 
   @spec get_id(stream_name :: String.t()) :: String.t() | nil
