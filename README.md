@@ -112,9 +112,21 @@ defmodule Store do
     accessor: MessageStore
 end
 
+defmodule Handler do
+  use Rill.Messaging.Handler
+
+  @impl Rill.Messaging.Handler
+  deftranslate handle(%Renamed{} = renamed) do
+    IO.inspect(renamed)
+    IO.puts("hello")
+  end
+end
+
 defmodule Run do
   def run do
     Repo.start_link(name: Repo)
+    Store.get("123")
+    Rill.Messaging.Handler(Handler, MessageStore.read("person-123"))
   end
 end
 ```

@@ -42,8 +42,7 @@ defmodule Rill.EntityProjection do
           dictionary :: %Dictionary{},
           messages_data :: Enumerable.t()
         ) :: term()
-  def apply(projection, entity, %Dictionary{} = dictionary, messages_data)
-      when is_list(messages_data) do
+  def apply(projection, entity, %Dictionary{} = dictionary, messages_data) do
     Enum.reduce(messages_data, entity, fn message_data, current_entity ->
       __MODULE__.apply(projection, current_entity, dictionary, message_data)
     end)
