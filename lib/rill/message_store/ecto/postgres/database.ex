@@ -172,4 +172,40 @@ defmodule Rill.MessageStore.Ecto.Postgres.Database do
     error in Postgrex.Error -> raise_known_error(error)
     error -> raise error
   end
+
+  defmacro __using__(repo: repo) do
+    quote do
+      @behaviour Rill.MessageStore.Database.Accessor
+
+      def get(stream_name, opts \\ [])
+          when is_binary(stream_name) and is_list(opts) do
+        Rill.MessageStore.Ecto.Postgres.Database.get(
+          unquote(repo),
+          stream_name,
+          opts
+        )
+      end
+
+      def get_last(stream_name) when is_binary(stream_name) do
+        Rill.MessageStore.Ecto.Postgres.Database.get_last(
+          unquote(repo),
+          stream_name
+        )
+      end
+
+      def put(
+            %Rill.MessageStore.MessageData.Write{} = msg,
+            stream_name,
+            opts \\ []
+          )
+          when is_binary(stream_name) and is_list(opts) do
+        Rill.MessageStore.Ecto.Postgres.Database.put(
+          unquote(repo),
+          msg,
+          stream_name,
+          opts
+        )
+      end
+    end
+  end
 end

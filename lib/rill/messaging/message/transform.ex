@@ -15,11 +15,12 @@ defmodule Rill.Messaging.Message.Transform do
   def read(%{} = data) do
     metadata = data[:metadata] || %{}
 
-    metadata
-    |> Map.put(:stream_name, data[:stream_name])
-    |> Map.put(:position, data[:position])
-    |> Map.put(:global_position, data[:global_position])
-    |> Map.put(:time, data[:time])
+    metadata =
+      metadata
+      |> Map.put(:stream_name, data[:stream_name])
+      |> Map.put(:position, data[:position])
+      |> Map.put(:global_position, data[:global_position])
+      |> Map.put(:time, data[:time])
 
     Map.put(data, :metadata, metadata)
   end
