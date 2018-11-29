@@ -6,7 +6,7 @@ defmodule Rill.MessageStore.Memory.Server do
   @moduledoc """
   In memory message store. Read events are stored in a reversed ordered
   array.
-  
+
   E.g. (state)
 
   [
@@ -33,8 +33,8 @@ defmodule Rill.MessageStore.Memory.Server do
   ]
   """
 
-  def start_link(state, name: name) do
-    GenServer.start_link(__MODULE__, state, name: name)
+  def start_link(name) do
+    GenServer.start_link(__MODULE__, nil, name: name)
   end
 
   @impl true
@@ -48,50 +48,58 @@ defmodule Rill.MessageStore.Memory.Server do
       {:ok, msg} <- set_msg_properties(msg, stream_name, state),
       {:ok, msg} <- handle_opt_reply_stream_name(msg, opts),
       :ok <- handle_opt_expected_version(msg, opts)
-    )
-    do
+    ) do
       {:reply, {:ok, msg.position}, [msg | state]}
     else
-      error -> 
+      error ->
         {:reply, error, state}
     end
   end
 
   defp set_msg_properties(msg, stream_name, state) do
-    new_msg = msg
-              |> Map.put(:id, Ecto.UUID.generate)
-              |> Map.put(:global_position, length(state) + 1)
-              |> Map.put(:position, count_messages_for_stream_name(stream_name, state))
-              |> Map.put(:stream_name, stream_name)
-              |> Map.put(:time, NaiveDateTime.to_iso8601(NaiveDateTime.utc_now))
-              |> Rill.Messaging.Message.Transform.read
-              |> Read.build 
+    new_msg =
+      msg
+      |> Map.put(:id, Ecto.UUID.generate())
+      |> Map.put(:global_position, length(state) + 1)
+      |> Map.put(:position, count_messages_for_stream_name(stream_name, state))
+      |> Map.put(:stream_name, stream_name)
+      |> Map.put(:time, NaiveDateTime.to_iso8601(NaiveDateTime.utc_now()))
+      |> Rill.Messaging.Message.Transform.read()
+      |> Read.build()
+
     {:ok, new_msg}
   end
 
   defp count_messages_for_stream_name(stream_name, state) do
-    state |> Enum.count(fn x -> x.stream_name == stream_name end )
+    state |> Enum.count(fn x -> x.stream_name == stream_name end)
   end
 
   defp handle_opt_expected_version(msg, opts) do
     case Keyword.get(opts, :expected_version) do
-      nil -> :ok
-      expected_version -> 
-        if (msg.position - 1) != expected_version do
+      nil ->
+        :ok
+
+      expected_version ->
+        if msg.position - 1 != expected_version do
           {:error, :concurrency_issue}
         else
           :ok
         end
     end
   end
+
   def handle_opt_reply_stream_name(msg, opts) do
     case Keyword.get(opts, :reply_stream_name) do
-      nil -> {:ok, msg}
-      reply_stream_name -> 
-        metadata = case Map.fetch(msg, :metadata) do
-          {:ok, nil} -> %{}
-          {:ok, data} when is_map(data) -> data
-        end
+      nil ->
+        {:ok, msg}
+
+      reply_stream_name ->
+        metadata =
+          case Map.fetch(msg, :metadata) do
+            {:ok, nil} -> %{}
+            {:ok, data} when is_map(data) -> data
+          end
+
         metadata = Map.put(metadata, :reply_stream_name, reply_stream_name)
         {:ok, Map.put(msg, :metadata, metadata)}
     end
@@ -99,19 +107,22 @@ defmodule Rill.MessageStore.Memory.Server do
 
   @impl true
   def handle_call({:get, stream_name, opts}, _from, state) do
-    messages = if StreamName.category?(stream_name) do
-     handle_opt_global_position(messages_by_stream(stream_name, state), opts)
-    else
-     handle_opt_position(messages_by_stream(stream_name, state), opts)
-    end
+    messages =
+      if StreamName.category?(stream_name) do
+        handle_opt_global_position(messages_by_stream(stream_name, state), opts)
+      else
+        handle_opt_position(messages_by_stream(stream_name, state), opts)
+      end
 
     {:reply, {:ok, messages}, state}
   end
 
   def handle_opt_position(messages, opts) do
     case Keyword.get(opts, :position) do
-      nil -> messages
-      position when position > -1 -> 
+      nil ->
+        messages
+
+      position when position > -1 ->
         {_, messages_from_position} = Enum.split(messages, position)
         messages_from_position
     end
@@ -119,11 +130,13 @@ defmodule Rill.MessageStore.Memory.Server do
 
   def handle_opt_global_position(messages, opts) do
     case Keyword.get(opts, :position) do
-      nil -> messages
-      position when position > -1 -> 
+      nil ->
         messages
-        |> Enum.reverse
-        |> Enum.filter(&( &1.global_position) >= position)
+
+      position when position > -1 ->
+        messages
+        |> Enum.reverse()
+        |> Enum.filter(&(&1.global_position >= position))
     end
   end
 
@@ -133,9 +146,11 @@ defmodule Rill.MessageStore.Memory.Server do
   end
 
   defp messages_by_stream(stream_name, state) do
-    state 
-    |> Enum.reverse 
-    |> Enum.filter(fn x -> stream_match?(x.metadata.stream_name, stream_name) end)
+    state
+    |> Enum.reverse()
+    |> Enum.filter(fn x ->
+      stream_match?(x.metadata.stream_name, stream_name)
+    end)
   end
 
   defp stream_match?(message_stream_name, expected_stream_name) do
