@@ -58,15 +58,14 @@ defmodule Rill.MessageStore.Memory.Server do
   end
 
   defp set_msg_properties(msg, stream_name, state) do
-    new_msg = Read.build(msg) 
-    new_msg_metadata = new_msg.metadata 
-                       |> Map.put(:global_position, length(state) + 1)
-                       |> Map.put(:position, count_messages_for_stream_name(stream_name, state))
-                       |> Map.put(:stream_name, stream_name)
-                       |> Map.put(:time, NaiveDateTime.to_iso8601(NaiveDateTime.utc_now))
-
-    new_msg = Map.put(new_msg, :metadata, new_msg_metadata)
-    |> Map.put(:id, Ecto.UUID.generate)
+    new_msg = msg
+              |> Map.put(:id, Ecto.UUID.generate)
+              |> Map.put(:global_position, length(state) + 1)
+              |> Map.put(:position, count_messages_for_stream_name(stream_name, state))
+              |> Map.put(:stream_name, stream_name)
+              |> Map.put(:time, NaiveDateTime.to_iso8601(NaiveDateTime.utc_now))
+              |> Rill.Messaging.Message.Transform.read
+              |> Read.build 
     {:ok, new_msg}
   end
 
@@ -100,10 +99,12 @@ defmodule Rill.MessageStore.Memory.Server do
 
   @impl true
   def handle_call({:get, stream_name, opts}, _from, state) do
-    messages = handle_opt_position(
-      messages_by_stream(stream_name, state),
-      opts
-    )
+    messages = if StreamName.category?(stream_name) do
+     handle_opt_global_position(messages_by_stream(stream_name, state), opts)
+    else
+     handle_opt_position(messages_by_stream(stream_name, state), opts)
+    end
+
     {:reply, {:ok, messages}, state}
   end
 
@@ -113,6 +114,16 @@ defmodule Rill.MessageStore.Memory.Server do
       position when position > -1 -> 
         {_, messages_from_position} = Enum.split(messages, position)
         messages_from_position
+    end
+  end
+
+  def handle_opt_global_position(messages, opts) do
+    case Keyword.get(opts, :position) do
+      nil -> messages
+      position when position > -1 -> 
+        messages
+        |> Enum.reverse
+        |> Enum.filter(&( &1.global_position) >= position)
     end
   end
 
