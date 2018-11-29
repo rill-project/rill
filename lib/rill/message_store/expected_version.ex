@@ -1,6 +1,6 @@
 defmodule Rill.MessageStore.ExpectedVersion do
   defmodule Error do
-    defexception [:message]
+    defexception [message: "ExpectedVersion Failed"]
   end
 
   alias Rill.MessageStore.NoStream

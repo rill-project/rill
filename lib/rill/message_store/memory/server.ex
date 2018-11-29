@@ -1,6 +1,7 @@
 defmodule Rill.MessageStore.Memory.Server do
   use GenServer
   alias Rill.MessageStore.MessageData.Read
+  alias Rill.MessageStore.StreamName
 
   @moduledoc """
   In memory message store. Read events are stored in a reversed ordered
@@ -57,14 +58,16 @@ defmodule Rill.MessageStore.Memory.Server do
   end
 
   defp set_msg_properties(msg, stream_name, state) do
-    {
-      :ok,
-      Read.build(msg) 
-      |> Map.put(:global_position, length(state) + 1)
-      |> Map.put(:position, count_messages_for_stream_name(stream_name, state))
-      |> Map.put(:stream_name, stream_name)
-      |> Map.put(:time, NaiveDateTime.to_iso8601(NaiveDateTime.utc_now))
-    }
+    new_msg = Read.build(msg) 
+    new_msg_metadata = new_msg.metadata 
+                       |> Map.put(:global_position, length(state) + 1)
+                       |> Map.put(:position, count_messages_for_stream_name(stream_name, state))
+                       |> Map.put(:stream_name, stream_name)
+                       |> Map.put(:time, NaiveDateTime.to_iso8601(NaiveDateTime.utc_now))
+
+    new_msg = Map.put(new_msg, :metadata, new_msg_metadata)
+    |> Map.put(:id, Ecto.UUID.generate)
+    {:ok, new_msg}
   end
 
   defp count_messages_for_stream_name(stream_name, state) do
@@ -121,6 +124,14 @@ defmodule Rill.MessageStore.Memory.Server do
   defp messages_by_stream(stream_name, state) do
     state 
     |> Enum.reverse 
-    |> Enum.filter(fn x -> x.stream_name == stream_name end)
+    |> Enum.filter(fn x -> stream_match?(x.metadata.stream_name, stream_name) end)
+  end
+
+  defp stream_match?(message_stream_name, expected_stream_name) do
+    if StreamName.category?(expected_stream_name) do
+      StreamName.get_category(message_stream_name) == expected_stream_name
+    else
+      expected_stream_name == message_stream_name
+    end
   end
 end

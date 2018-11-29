@@ -34,21 +34,26 @@ defmodule Rill.MessageStore.Memory.Database do
 
   # just a wrapper for calling genserver
   defp server_call(session, params) when is_tuple(params) do
-    {:ok, result} = GenServer.call(Session.get(session), params)
-    result
+    with {:ok, result} <- GenServer.call(Session.get(session), params)
+    do
+     result
+    else
+      {:error, :concurrency_issue} ->  
+        raise(Rill.MessageStore.ExpectedVersion.Error)
+    end
   end
 
-  defmacro __using__(repo: repo) do
+  defmacro __using__(namespace: namespace) do
     quote do
       @behaviour Rill.MessageStore.Database.Accessor
 
       def get(stream_name, opts \\ [])
           when is_binary(stream_name) and is_list(opts) do
-        Rill.MessageStore.Memory.Database.get(unquote(repo), stream_name, opts)
+        Rill.MessageStore.Memory.Database.get(unquote(namespace), stream_name, opts)
       end
 
       def get_last(stream_name) when is_binary(stream_name) do
-        Rill.MessageStore.Memory.Database.get_last(unquote(repo), stream_name)
+        Rill.MessageStore.Memory.Database.get_last(unquote(namespace), stream_name)
       end
 
       def put(
@@ -58,7 +63,7 @@ defmodule Rill.MessageStore.Memory.Database do
           )
           when is_binary(stream_name) and is_list(opts) do
         Rill.MessageStore.Memory.Database.put(
-          unquote(repo),
+          unquote(namespace),
           msg,
           stream_name,
           opts
