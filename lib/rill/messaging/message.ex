@@ -51,6 +51,26 @@ defmodule Rill.Messaging.Message do
         Map.put(msg, :id, message_data.id)
       end
 
+      defdelegate correlate(message, correlation_stream_name),
+        to: Rill.Messaging.Message
+
+      @spec follow(preceding_message :: struct()) :: struct()
+      def follow(%{} = preceding_message) do
+        Rill.Messaging.Message.follow(__MODULE__, preceding_message)
+      end
+
+      @spec follow(
+              preceding_message :: struct(),
+              subsequent_message :: module() | struct()
+            ) :: struct()
+      def follow(%{} = preceding_message, subsequent_message) do
+        Rill.Messaging.Message.follow(
+          __MODULE__,
+          preceding_message,
+          subsequent_message
+        )
+      end
+
       defoverridable Rill.Schema
     end
   end
@@ -144,13 +164,23 @@ defmodule Rill.Messaging.Message do
           struct_name :: module(),
           correlation_stream_name :: String.t()
         ) :: struct()
-  def correlate(struct_name, correlation_stream_name) do
+  def correlate(struct_name, correlation_stream_name)
+      when is_atom(struct_name) and is_binary(correlation_stream_name) do
     map = build(struct_name)
 
     metadata =
       Map.put(map.metadata, :correlation_stream_name, correlation_stream_name)
 
     Map.put(map, :metadata, metadata)
+  end
+
+  @spec correlate(message :: struct(), correlation_stream_name :: String.t()) ::
+          struct()
+  def correlate(%{} = message, correlation_stream_name)
+      when is_binary(correlation_stream_name) do
+    metadata = Metadata.correlate(message.metadata, correlation_stream_name)
+
+    Map.put(message, :metadata, metadata)
   end
 
   @type copy_opts :: {:metadata, nil | %Metadata{}}
@@ -227,4 +257,9 @@ defmodule Rill.Messaging.Message do
 
   defp to_atom(value) when is_atom(value), do: value
   defp to_atom(value) when is_binary(value), do: String.to_atom(value)
+end
+
+defmodule Renamed do
+  use Rill.Messaging.Message
+  defmessage([:name])
 end

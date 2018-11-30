@@ -92,6 +92,13 @@ defmodule Rill.Messaging.Message.Metadata do
   def reply?(%__MODULE__{reply_stream_name: nil}), do: false
   def reply?(%__MODULE__{reply_stream_name: _}), do: true
 
+  @spec correlate(metadata :: %__MODULE__{}, stream_name :: String.t()) ::
+          %__MODULE__{}
+  def correlate(%__MODULE__{} = metadata, stream_name)
+      when is_binary(stream_name) do
+    Map.put(metadata, :correlation_stream_name, stream_name)
+  end
+
   @spec correlated?(metadata :: %__MODULE__{}, stream_name :: String.t()) ::
           boolean()
   def correlated?(%__MODULE__{correlation_stream_name: nil}, _), do: false
