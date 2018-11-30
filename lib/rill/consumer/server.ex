@@ -56,6 +56,7 @@ defmodule Rill.Consumer.Server do
           |> Map.put(:condition, unquote(condition))
           |> Map.merge(merge_state)
 
+        Process.flag(:trap_exit, true)
         state = Rill.Consumer.listen(state, self())
 
         {:ok, state}
