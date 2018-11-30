@@ -56,6 +56,23 @@ defmodule Rill.MessageStore.Memory.Server do
     end
   end
 
+  @impl true
+  def handle_call({:get, stream_name, opts}, _from, state) do
+    messages =
+      if StreamName.category?(stream_name) do
+        handle_opt_global_position(messages_by_stream(stream_name, state), opts)
+      else
+        handle_opt_position(messages_by_stream(stream_name, state), opts)
+      end
+
+    {:reply, {:ok, messages}, state}
+  end
+
+  @impl true
+  def handle_call({:get_last, stream_name}, _from, state) do
+    {:reply, {:ok, List.last(messages_by_stream(stream_name, state))}, state}
+  end
+
   defp set_msg_properties(msg, stream_name, state) do
     new_msg =
       msg
@@ -105,18 +122,6 @@ defmodule Rill.MessageStore.Memory.Server do
     end
   end
 
-  @impl true
-  def handle_call({:get, stream_name, opts}, _from, state) do
-    messages =
-      if StreamName.category?(stream_name) do
-        handle_opt_global_position(messages_by_stream(stream_name, state), opts)
-      else
-        handle_opt_position(messages_by_stream(stream_name, state), opts)
-      end
-
-    {:reply, {:ok, messages}, state}
-  end
-
   def handle_opt_position(messages, opts) do
     case Keyword.get(opts, :position) do
       nil ->
@@ -138,11 +143,6 @@ defmodule Rill.MessageStore.Memory.Server do
         |> Enum.reverse()
         |> Enum.filter(&(&1.global_position >= position))
     end
-  end
-
-  @impl true
-  def handle_call({:get_last, stream_name}, _from, state) do
-    {:reply, {:ok, List.last(messages_by_stream(stream_name, state))}, state}
   end
 
   defp messages_by_stream(stream_name, state) do
