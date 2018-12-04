@@ -51,9 +51,6 @@ defmodule Rill.Messaging.Message do
         Map.put(msg, :id, message_data.id)
       end
 
-      defdelegate correlate(message, correlation_stream_name),
-        to: Rill.Messaging.Message
-
       @spec follow(preceding_message :: struct()) :: struct()
       def follow(%{} = preceding_message) do
         Rill.Messaging.Message.follow(__MODULE__, preceding_message)
