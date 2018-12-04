@@ -17,8 +17,31 @@ defmodule Rill do
       alias Rill.MessageStore
       alias Rill.Messaging.Message
 
+      require Rill
+      import only: [try_version: 1]
+
       import Rill.MessageStore.StreamName,
         only: [stream_name: 1, stream_name: 2, stream_name: 3]
+    end
+  end
+
+  defmacro try(error, do: block) do
+    quote do
+      try do
+        unquote(block)
+      rescue
+        unquote(error) -> nil
+      end
+    end
+  end
+
+  defmacro try_version(do: block) do
+    quote do
+      try do
+        unquote(block)
+      rescue
+        Rill.MessageStore.ExpectedVersion.Error -> nil
+      end
     end
   end
 
