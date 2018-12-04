@@ -18,7 +18,7 @@ defmodule Rill do
       alias Rill.Messaging.Message
 
       require Rill
-      import only: [try_version: 1]
+      import Rill, only: [try_version: 1]
 
       import Rill.MessageStore.StreamName,
         only: [stream_name: 1, stream_name: 2, stream_name: 3]
