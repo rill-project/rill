@@ -80,12 +80,12 @@ defmodule Person do
 end
 
 defmodule Renamed do
-  use Rill.Messaging.Message
+  use Rill, :message
   defmessage([:name])
 end
 
 defmodule PersonProjection do
-  use Rill.EntityProjection
+  use Rill, :projection
 
   @impl Rill.EntityProjection
   deftranslate apply(%Renamed{} = renamed, person) do
@@ -103,51 +103,32 @@ defmodule Repo do
   end
 end
 
-defmodule Database do
-  use Rill.MessageStore.Ecto.Postgres.Database, repo: Repo
-end
-
-defmodule MessageStore do
-  use Rill.MessageStore.Ecto.Postgres, repo: Repo
-end
-
 defmodule Store do
   use Rill.EntityStore,
     entity: %Person{},
     category: "person",
-    projection: PersonProjection,
-    accessor: MessageStore
+    projection: PersonProjection
 end
 
 defmodule Handler do
-  use Rill.Messaging.Handler
+  use Rill, :handler
 
   @impl Rill.Messaging.Handler
-  deftranslate handle(%Renamed{} = renamed) do
+  deftranslate handle(%Renamed{} = renamed, _session) do
     IO.inspect(renamed)
     IO.puts("hello")
   end
 end
 
-defmodule Consumer do
-  use Rill.Consumer,
-    handlers: [Handler],
-    stream_name: "person",
-    reader: Database,
-    poll_interval_milliseconds: 10000,
-    batch_size: 1
-end
-
-defmodule PersonComponent do
-  use Rill.ComponentHost, [Consumer]
-end
-
 defmodule Run do
   def run do
     {:ok, pid1} = Repo.start_link(name: Repo)
+
+    session = Rill.MessageStore.Ecto.Postgres.Session.new(Repo)
+
     # renamed = %Renamed{name: "foo1234r"}
     # MessageStore.write(renamed, "person-123")
-    # Store.get("123")
+    # Store.get(session, "123", include: [:version])
     # Rill.Messaging.Handler(Handler, MessageStore.read("person-123"))
     # {:ok, pid2} = Consumer.start_link()
     # IO.inspect({pid1, pid2})
@@ -158,13 +139,28 @@ defmodule Run do
     # Process.exit(pid2, "timetogo")
     Supervisor.start_link(
       [
-        PersonComponent
-        # {Rill.ComponentHost, [Consumer]}
+        {Rill.Consumer,
+         [
+           handlers: [Handler],
+           stream_name: "person",
+           identifier: "personIdentifier",
+           session: session,
+           poll_interval_milliseconds: 10000,
+           batch_size: 1
+         ]}
       ],
       strategy: :one_for_one
     )
+  end
 
-    # Rill.ComponentHost.start_link([Consumer])
+  def run2 do
+    {:ok, pid1} = Rill.MessageStore.Memory.Server.start_link(name: :foo)
+
+    session = Rill.MessageStore.Memory.Session.new(:foo)
+
+    renamed = %Renamed{name: "foo1234r"}
+    Rill.MessageStore.write(session, renamed, "person-123")
+    Store.get(session, "123", include: [:version])
   end
 end
 ```

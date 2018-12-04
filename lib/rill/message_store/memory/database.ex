@@ -1,7 +1,4 @@
 defmodule Rill.MessageStore.Memory.Database do
-  # session could be anything you want. In Postgres is the atom for the Repo
-  # module
-
   defmodule Defaults do
     @spec position() :: 0
     def position, do: 0
@@ -11,64 +8,36 @@ defmodule Rill.MessageStore.Memory.Database do
 
   @behaviour Rill.MessageStore.Database
 
-  alias Rill.MessageStore.Memory.Session
+  alias Rill.Session
   alias Rill.MessageStore.MessageData.Write
 
   @impl Rill.MessageStore.Database
-  def get(session, stream_name, opts)
+  def get(%Session{} = session, stream_name, opts)
       when is_binary(stream_name) and is_list(opts) do
     server_call(session, {:get, stream_name, opts})
   end
 
   @impl Rill.MessageStore.Database
-  def get_last(session, stream_name)
+  def get_last(%Session{} = session, stream_name)
       when is_binary(stream_name) do
     server_call(session, {:get_last, stream_name})
   end
 
   @impl Rill.MessageStore.Database
-  def put(session, %Write{} = msg, stream_name, opts)
+  def put(%Session{} = session, %Write{} = msg, stream_name, opts)
       when is_binary(stream_name) and is_list(opts) do
     server_call(session, {:put, msg, stream_name, opts})
   end
 
   # just a wrapper for calling genserver
-  defp server_call(session, params) when is_tuple(params) do
-    with {:ok, result} <- GenServer.call(Session.get(session), params)
-    do
-     result
+  defp server_call(%Session{} = session, params) when is_tuple(params) do
+    pid = Session.get_config(session, :pid)
+
+    with {:ok, result} <- GenServer.call(pid, params) do
+      result
     else
-      {:error, :concurrency_issue} ->  
+      {:error, :concurrency_issue} ->
         raise(Rill.MessageStore.ExpectedVersion.Error)
-    end
-  end
-
-  defmacro __using__(namespace: namespace) do
-    quote do
-      @behaviour Rill.MessageStore.Database.Accessor
-
-      def get(stream_name, opts \\ [])
-          when is_binary(stream_name) and is_list(opts) do
-        Rill.MessageStore.Memory.Database.get(unquote(namespace), stream_name, opts)
-      end
-
-      def get_last(stream_name) when is_binary(stream_name) do
-        Rill.MessageStore.Memory.Database.get_last(unquote(namespace), stream_name)
-      end
-
-      def put(
-            %Rill.MessageStore.MessageData.Write{} = msg,
-            stream_name,
-            opts \\ []
-          )
-          when is_binary(stream_name) and is_list(opts) do
-        Rill.MessageStore.Memory.Database.put(
-          unquote(namespace),
-          msg,
-          stream_name,
-          opts
-        )
-      end
     end
   end
 end

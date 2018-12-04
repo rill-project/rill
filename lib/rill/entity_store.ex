@@ -1,6 +1,7 @@
 defmodule Rill.EntityStore do
   alias Rill.MessageStore.StreamName
   alias Rill.EntityProjection
+  alias Rill.Session
 
   @includes [:id, :version]
 
@@ -13,18 +14,23 @@ defmodule Rill.EntityStore do
   @type include_option :: :id | :version
   @type get_option :: [include: include_option()]
 
-  @callback get(id :: String.t(), opts :: get_option()) :: nil | any() | list()
-  @callback fetch(id :: String.t(), opts :: get_option()) :: any() | list()
+  @callback get(session :: Session.t(), id :: String.t(), opts :: get_option()) ::
+              nil | any() | list()
+  @callback fetch(
+              session :: Session.t(),
+              id :: String.t(),
+              opts :: get_option()
+            ) :: any() | list()
 
   @spec get(
-          accessor :: module(),
+          session :: Session.t(),
           category :: String.t(),
           projection :: module(),
           entity() :: any(),
           id :: String.t(),
           opts :: get_option()
         ) :: any() | list()
-  def get(accessor, category, projection, entity, id, opts \\ []) do
+  def get(%Session{} = session, category, projection, entity, id, opts \\ []) do
     include =
       opts
       |> Keyword.get(:include, [])
@@ -35,8 +41,7 @@ defmodule Rill.EntityStore do
     cachable = %{id: nil, entity: entity, version: nil}
 
     info =
-      stream_name
-      |> accessor.read()
+      session.message_store.read(session, stream_name)
       |> Enum.reduce(cachable, fn message_data, cache_info ->
         current_entity = cache_info.entity
 
@@ -66,15 +71,15 @@ defmodule Rill.EntityStore do
   used
   """
   @spec fetch(
-          accessor :: module(),
+          session :: Session.t(),
           category :: String.t(),
           projection :: module(),
           entity() :: any(),
           id :: String.t(),
           opts :: get_option()
         ) :: any() | list()
-  def fetch(accessor, category, projection, entity, id, opts \\ []) do
-    results = get(accessor, category, projection, entity, id, opts)
+  def fetch(%Session{} = session, category, projection, entity, id, opts \\ []) do
+    results = get(session, category, projection, entity, id, opts)
 
     {entity_info, args} = List.pop_at(results, 0)
     entity_info = entity_info || entity
@@ -84,15 +89,14 @@ defmodule Rill.EntityStore do
   defmacro __using__(
              entity: entity,
              category: category,
-             projection: projection,
-             accessor: accessor
+             projection: projection
            ) do
     quote location: :keep do
       @behaviour unquote(__MODULE__)
 
-      def get(id, opts \\ []) do
+      def get(session, id, opts \\ []) do
         unquote(__MODULE__).get(
-          unquote(accessor),
+          session,
           unquote(category),
           unquote(projection),
           unquote(entity),
@@ -101,9 +105,9 @@ defmodule Rill.EntityStore do
         )
       end
 
-      def fetch(id, opts \\ []) do
+      def fetch(session, id, opts \\ []) do
         unquote(__MODULE__).fetch(
-          unquote(accessor),
+          session,
           unquote(category),
           unquote(projection),
           unquote(entity),

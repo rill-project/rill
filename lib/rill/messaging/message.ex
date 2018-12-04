@@ -258,8 +258,3 @@ defmodule Rill.Messaging.Message do
   defp to_atom(value) when is_atom(value), do: value
   defp to_atom(value) when is_binary(value), do: String.to_atom(value)
 end
-
-defmodule Renamed do
-  use Rill.Messaging.Message
-  defmessage([:name])
-end

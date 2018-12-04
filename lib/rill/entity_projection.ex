@@ -52,6 +52,10 @@ defmodule Rill.EntityProjection do
     quote do
       use Rill.Messaging.Message.Dictionary
       @behaviour unquote(__MODULE__)
+
+      def apply(entity, %Rill.MessageStore.MessageData.Read{} = message_data) do
+        unquote(__MODULE__).apply(__MODULE__, entity, message_data)
+      end
     end
   end
 end

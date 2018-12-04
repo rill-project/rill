@@ -13,8 +13,8 @@ defmodule Rill.Consumer do
             stream_name: nil,
             poll_interval_milliseconds: Defaults.poll_interval_milliseconds(),
             batch_size: Defaults.batch_size(),
-            reader: nil,
-            condition: nil
+            condition: nil,
+            session: nil
 
   alias Rill.MessageStore.MessageData.Read
   alias Rill.Messaging.Handler
@@ -28,8 +28,8 @@ defmodule Rill.Consumer do
           stream_name: String.t(),
           poll_interval_milliseconds: pos_integer(),
           batch_size: pos_integer(),
-          reader: module(),
-          condition: nil | term()
+          condition: nil | term(),
+          session: nil | Rill.Session.t()
         }
 
   @spec dispatch(state :: t(), pid :: pid()) :: t()
@@ -38,12 +38,16 @@ defmodule Rill.Consumer do
     state
   end
 
-  def dispatch(%__MODULE__{messages: [_ | _] = messages_data} = state, pid) do
+  def dispatch(
+        %__MODULE__{messages: [_ | _] = messages_data, session: session} =
+          state,
+        pid
+      ) do
     handlers = state.handlers
     [message_data | new_messages_data] = messages_data
 
     Enum.each(handlers, fn handler ->
-      Handler.handle(handler, message_data)
+      Handler.handle(session, handler, message_data)
     end)
 
     GenServer.cast(pid, :dispatch)
@@ -75,13 +79,15 @@ defmodule Rill.Consumer do
   def fetch(%__MODULE__{messages: [_ | _]} = state, _pid), do: state
 
   def fetch(%__MODULE__{messages: []} = state, pid) do
+    session = state.session
+
     opts = [
       position: state.position,
       batch_size: state.batch_size,
       condition: state.condition
     ]
 
-    case state.reader.get(state.stream_name, opts) do
+    case session.database.get(session, state.stream_name, opts) do
       [] ->
         state
 
@@ -91,9 +97,44 @@ defmodule Rill.Consumer do
     end
   end
 
-  defmacro __using__(opts \\ []) do
-    quote location: :keep do
-      use Rill.Consumer.Server, unquote(opts)
-    end
+  @doc """
+  - `:handlers`
+  - `:identifier`
+  - `:stream_name`
+  - `:poll_interval_milliseconds`
+  - `:batch_size`
+  - `:session`
+  - `:condition`
+  """
+  def child_spec(opts, genserver_opts \\ []) do
+    handlers = Keyword.fetch!(opts, :handlers)
+    identifier = Keyword.fetch!(opts, :identifier)
+    stream_name = Keyword.fetch!(opts, :stream_name)
+    session = Keyword.fetch!(opts, :session)
+
+    poll_interval_milliseconds =
+      Keyword.get(
+        opts,
+        :poll_interval_milliseconds,
+        Defaults.poll_interval_milliseconds()
+      )
+
+    batch_size = Keyword.get(opts, :batch_size, Defaults.batch_size())
+    condition = Keyword.get(opts, :condition)
+
+    initial_state = %__MODULE__{
+      handlers: handlers,
+      identifier: identifier,
+      stream_name: stream_name,
+      session: session,
+      poll_interval_milliseconds: poll_interval_milliseconds,
+      batch_size: batch_size,
+      condition: condition
+    }
+
+    %{
+      id: __MODULE__.Server,
+      start: {__MODULE__.Server, :start_link, [initial_state, genserver_opts]}
+    }
   end
 end

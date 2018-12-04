@@ -1,13 +1,12 @@
 defmodule Rill.MessageStore.Ecto.Postgres do
-  @database Rill.MessageStore.Ecto.Postgres.Database
-  use Rill.MessageStore, database: @database
+  use Rill.MessageStore
 
-  alias Rill.MessageStore.Ecto.Postgres.Session
+  alias Rill.Session
 
   @type transaction_timeout_option ::
           {:transaction_timeout, :infinity | pos_integer()}
   @spec write(
-          session :: term(),
+          session :: Session.t(),
           message_or_messages :: struct() | [struct()],
           stream_name :: String.t(),
           opts :: [
@@ -21,13 +20,13 @@ defmodule Rill.MessageStore.Ecto.Postgres do
         do: [timeout: opts[:transaction_timeout]],
         else: []
 
-    repo = Session.get(session)
+    opts = Keyword.delete(opts, :transaction_timeout)
+    repo = Session.get_config(session, :repo)
 
     repo.transaction(
       fn ->
-        Rill.MessageStore.write(
-          repo,
-          @database,
+        Rill.MessageStore.Base.write(
+          session,
           message_or_messages,
           stream_name,
           opts
@@ -35,26 +34,5 @@ defmodule Rill.MessageStore.Ecto.Postgres do
       end,
       transaction_opts
     )
-  end
-
-  defmacro __using__(repo: repo) do
-    quote location: :keep do
-      @behaviour Rill.MessageStore.Accessor
-
-      def read(stream_name, opts \\ [], fun \\ nil) do
-        repo = unquote(repo)
-        unquote(__MODULE__).read(repo, stream_name, opts, fun)
-      end
-
-      def write(message_or_messages, stream_name, opts \\ []) do
-        repo = unquote(repo)
-        unquote(__MODULE__).write(repo, message_or_messages, stream_name, opts)
-      end
-
-      def write_initial(message, stream_name) do
-        repo = unquote(repo)
-        unquote(__MODULE__).write_initial(repo, message, stream_name)
-      end
-    end
   end
 end

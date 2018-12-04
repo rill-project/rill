@@ -33,8 +33,8 @@ defmodule Rill.MessageStore.Memory.Server do
   ]
   """
 
-  def start_link(name) do
-    GenServer.start_link(__MODULE__, nil, name: name)
+  def start_link(opts \\ []) do
+    GenServer.start_link(__MODULE__, nil, opts)
   end
 
   @impl true

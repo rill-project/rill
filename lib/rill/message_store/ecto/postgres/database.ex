@@ -8,7 +8,7 @@ defmodule Rill.MessageStore.Ecto.Postgres.Database do
 
   @behaviour Rill.MessageStore.Database
 
-  alias Rill.MessageStore.Ecto.Postgres.Session
+  alias Rill.Session
   alias Rill.MessageStore.StreamName
   alias Rill.MessageStore.MessageData.Write
   alias Rill.MessageStore.MessageData.Read
@@ -42,9 +42,9 @@ defmodule Rill.MessageStore.Ecto.Postgres.Database do
   )"
 
   @impl Rill.MessageStore.Database
-  def get(session, stream_name, opts \\ [])
+  def get(%Session{} = session, stream_name, opts \\ [])
       when is_binary(stream_name) and is_list(opts) do
-    repo = Session.get(session)
+    repo = Session.get_config(session, :repo)
     condition = constrain_condition(opts[:condition])
     position = opts[:position] || Defaults.position()
     batch_size = opts[:batch_size] || Defaults.batch_size()
@@ -58,9 +58,9 @@ defmodule Rill.MessageStore.Ecto.Postgres.Database do
   end
 
   @impl Rill.MessageStore.Database
-  def get_last(session, stream_name)
+  def get_last(%Session{} = session, stream_name)
       when is_binary(stream_name) do
-    repo = Session.get(session)
+    repo = Session.get_config(session, :repo)
     sql = sql_get_last(stream_name)
     params = [stream_name]
 
@@ -72,9 +72,9 @@ defmodule Rill.MessageStore.Ecto.Postgres.Database do
   end
 
   @impl Rill.MessageStore.Database
-  def put(session, %Write{} = msg, stream_name, opts \\ [])
+  def put(%Session{} = session, %Write{} = msg, stream_name, opts \\ [])
       when is_binary(stream_name) and is_list(opts) do
-    repo = Session.get(session)
+    repo = Session.get_config(session, :repo)
     identifier_get = Keyword.get(opts, :identifier_get) || (&Identifier.get/0)
 
     expected_version =
@@ -171,41 +171,5 @@ defmodule Rill.MessageStore.Ecto.Postgres.Database do
   rescue
     error in Postgrex.Error -> raise_known_error(error)
     error -> raise error
-  end
-
-  defmacro __using__(repo: repo) do
-    quote do
-      @behaviour Rill.MessageStore.Database.Accessor
-
-      def get(stream_name, opts \\ [])
-          when is_binary(stream_name) and is_list(opts) do
-        Rill.MessageStore.Ecto.Postgres.Database.get(
-          unquote(repo),
-          stream_name,
-          opts
-        )
-      end
-
-      def get_last(stream_name) when is_binary(stream_name) do
-        Rill.MessageStore.Ecto.Postgres.Database.get_last(
-          unquote(repo),
-          stream_name
-        )
-      end
-
-      def put(
-            %Rill.MessageStore.MessageData.Write{} = msg,
-            stream_name,
-            opts \\ []
-          )
-          when is_binary(stream_name) and is_list(opts) do
-        Rill.MessageStore.Ecto.Postgres.Database.put(
-          unquote(repo),
-          msg,
-          stream_name,
-          opts
-        )
-      end
-    end
   end
 end
