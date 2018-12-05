@@ -62,7 +62,7 @@ defmodule Rill.MessageStore do
     do: handle(session, stream_name, handler, times, [])
 
   def handle(%Session{} = session, stream_name, handler, times, opts) do
-    repeat_times = Range.new(0, times)
+    repeat_times = Range.new(1, times)
 
     Enum.each(repeat_times, fn _ ->
       session
