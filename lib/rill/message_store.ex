@@ -51,7 +51,7 @@ defmodule Rill.MessageStore do
           handler :: module(),
           times :: pos_integer(),
           opts :: [read_option()]
-        ) :: no_return()
+        ) :: Session.t()
   def handle(session, stream_name, handler),
     do: handle(session, stream_name, handler, 1, [])
 
@@ -69,6 +69,8 @@ defmodule Rill.MessageStore do
       |> read(stream_name, opts)
       |> Enum.each(fn message -> handler.handle(session, message) end)
     end)
+
+    session
   end
 
   defmacro __using__(_opts \\ []) do
