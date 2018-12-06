@@ -367,9 +367,9 @@ Supervisor.start_link(
 
 ## TODO
 
-- [] Logging
-- [] Tests
-- [] More test utilities
-- [] Position Store
-- [] Store Cache
-- [] View Data
+- [ ] Logging
+- [ ] Tests
+- [ ] More test utilities
+- [ ] Position Store
+- [ ] Store Cache
+- [ ] View Data
