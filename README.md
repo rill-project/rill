@@ -11,7 +11,7 @@ Install via Hex:
 ```elixir
 def deps do
   [
-    {:rill, "~> 0.4.7"}
+    {:rill, "~> 0.5.1"}
   ]
 end
 ```
@@ -364,3 +364,9 @@ Supervisor.start_link(
   strategy: :one_for_one
 )
 ```
+
+## TODO
+
+- [] Logging
+- [] Tests
+- [] More test utilities
