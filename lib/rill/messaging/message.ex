@@ -5,6 +5,7 @@ defmodule Rill.Messaging.Message do
 
   alias Rill.Messaging.Message.Metadata
   alias Rill.MessageStore.MessageData.Read
+  alias Rill.MapCopy
 
   @type message_or_type :: String.t() | atom() | struct()
 

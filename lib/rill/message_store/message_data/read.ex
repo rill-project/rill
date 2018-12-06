@@ -10,6 +10,8 @@ defmodule Rill.MessageStore.MessageData.Read do
     :time
   ]
 
+  alias Rill.MapCopy
+
   @type t :: %__MODULE__{
           id: String.t(),
           type: String.t(),

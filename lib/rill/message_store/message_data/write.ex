@@ -1,6 +1,8 @@
 defmodule Rill.MessageStore.MessageData.Write do
   defstruct [:id, :type, :data, :metadata]
 
+  alias Rill.MapCopy
+
   @type t :: %__MODULE__{
           id: String.t(),
           type: String.t(),

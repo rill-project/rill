@@ -1,4 +1,4 @@
-defmodule MapCopy do
+defmodule Rill.MapCopy do
   @doc """
   Copies `data` over `receiver`, only the fields that are in common. The
   returned value is a tuple with first value being the updated receiver and

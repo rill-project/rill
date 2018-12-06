@@ -1,6 +1,7 @@
 defmodule Rill.Messaging.Message.Metadata do
   alias Rill.Messaging.Category
   alias Rill.MessageStore.StreamName
+  alias Rill.MapCopy
 
   defstruct [
     :stream_name,
