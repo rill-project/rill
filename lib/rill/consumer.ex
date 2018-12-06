@@ -97,6 +97,8 @@ defmodule Rill.Consumer do
     end
   end
 
+  defdelegate start_link(initial_state, opts \\ []), to: Rill.Consumer.Server
+
   @doc """
   - `:handlers`
   - `:identifier`

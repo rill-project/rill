@@ -12,7 +12,7 @@ defmodule Rill.EntityStore do
   stream), nil is returned
   """
   @type include_option :: :id | :version
-  @type get_option :: [include: include_option()]
+  @type get_option :: [include: [include_option()] | include_option()]
 
   @callback get(session :: Session.t(), id :: String.t(), opts :: get_option()) ::
               nil | any() | list()
@@ -34,6 +34,7 @@ defmodule Rill.EntityStore do
     include =
       opts
       |> Keyword.get(:include, [])
+      |> as_list()
       |> Enum.filter(fn included -> included in @includes end)
 
     stream_name = StreamName.stream_name(category, id)
@@ -85,6 +86,9 @@ defmodule Rill.EntityStore do
     entity_info = entity_info || entity
     [entity_info | args]
   end
+
+  defp as_list(value) when is_list(value), do: value
+  defp as_list(value), do: [value]
 
   defmacro __using__(
              entity: entity,

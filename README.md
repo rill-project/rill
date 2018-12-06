@@ -1,77 +1,287 @@
 # Rill
 
-**TODO: Add description**
+Translation of [Eventide Framework](https://eventide-project.org/) in Elixir
 
 ## Installation
 
-If [available in Hex](https://hex.pm/docs/publish), the package can be installed
-by adding `rill` to your list of dependencies in `mix.exs`:
+Install via Hex:
 
 ```elixir
 def deps do
   [
-    {:rill, "~> 0.1.0"}
+    {:rill, "~> 0.4.7"}
   ]
 end
 ```
 
-Documentation can be generated with [ExDoc](https://github.com/elixir-lang/ex_doc)
-and published on [HexDocs](https://hexdocs.pm). Once published, the docs can
-be found at [https://hexdocs.pm/rill](https://hexdocs.pm/rill).
-
-## Examples
-
 ### Memory
 
+To use the in-memory MessageStore, `Rill.MessageStore.Memory.Server` needs to be started and `Session` needs to be configured with the server pid (or name).
+
+### Ecto.Postgres
+
+To use the Ecto.Postgres MessageStore, `ecto` and `ecto_sql`, packages are
+needed.
+
+A Ruby installation is needed.
+
+Following the steps for [Eventide Postgres Setup](http://docs.eventide-project.org/setup/postgres.html#eventide-for-postgres-setup),
+up to [Create the Message Store Database](http://docs.eventide-project.org/setup/postgres.html#create-the-message-store-database)
+(included), will ensure the database is correctly created.
+
+A Repo module needs to be created, following these guidelines:
+
 ```elixir
+defmodule MyRepo do
+  use Ecto.Repo, otp_app: :your_app
 
-defmodule Foo do
-  use Rill.Messaging.Message
-  defmessage([:name, :age])
-end
-
-defmodule Repo do
-  use Ecto.Repo,
-    otp_app: :rill,
-    adapter: Ecto.Adapters.Postgres
-
+  @doc """
+  Dynamically loads the repository url from the
+  DATABASE_URL environment variable.
+  """
   def init(_, opts) do
+    # This part is entirely optional
     {:ok, Keyword.put(opts, :url, System.get_env("DATABASE_URL"))}
-  end
-end
-
-defmodule MessageStore do
-  use Rill.MessageStore.Ecto.Postgres, repo: Repo
-end
-
-defmodule Run do
-  def run do
-    Repo.start_link(name: Repo)
-  end
-end
-
-Run.run()
-tmp = %Foo{name: "foo", age: 213}
-MessageStore.write(tmp, "foo-123")
-MessageStore.read("foo-123", position: 0, batch_size: 1)|>Enum.map(fn m -> m end)
-
-defmodule Foo do
-  use Rill.Messaging.Message
-  defmessage([:name, :age])
-end
-
-defmodule MessageStore do
-  use Rill.MessageStore.Memory, namespace: NameSpace
-end
-
-defmodule Run do
-  def run do
-    Rill.MessageStore.Memory.Server.start_link(nil, name: NameSpace)
   end
 end
 ```
 
-### Everything
+The `Repo` module needs to be started and supplied to `Session` during
+configuration.
+
+## Getting Started
+
+### Memory
+
+```elixir
+defmodule Renamed do
+  use Rill, :message
+  defmessage([:name])
+end
+
+{:ok, pid} = Rill.MessageStore.Memory.Server.start_link()
+session = Rill.MessageStore.Memory.Session.new(pid)
+message = %Renamed{name: "foo"}
+
+Rill.MessageStore.write(session, message, "person")
+```
+
+### Postgres
+
+```elixir
+defmodule Renamed do
+  use Rill, :message
+  defmessage([:name])
+end
+
+{:ok, _pid} = MyRepo.start_link([name: MyRepo])
+session = Rill.MessageStore.Ecto.Postgres.Session.new(MyRepo)
+message = %Renamed{name: "foo"}
+
+Rill.MessageStore.write(session, message, "person")
+```
+
+## Features
+
+### Read from MessageStore
+
+Reading all messages for a given stream name, can be accomplished with:
+
+```elixir
+Rill.MessageStore.read(session, "streamName") # Returns a stream
+```
+
+A utility is provided for the following common pattern (used in tests):
+
+- Read a message
+- Pass the message to a handler
+- Repeat the previous 2 steps N times
+
+```elixir
+# Handles all messages from "streamName", 5 times
+Rill.MessageStore.Reader.handle(session, "streamName", HandlerModule, 5)
+```
+
+The `handle` function is provided as utility for testing, it's not meant to
+be used in production code. Notice that `handle` returns the `Session`, so it
+can be piped.
+
+### Define a Message
+
+```elixir
+defmodule Renamed do
+  use Rill, :message
+  defmessage([:name])
+end
+
+message = %Renamed{name: "foo"}
+```
+
+### Write to MessageStore
+
+#### Simple write
+
+```elixir
+Rill.MessageStore.write(session, message, "streamName")
+```
+
+#### Write with expected version
+
+```elixir
+Rill.MessageStore.write(session, message, "streamName", expected_version: version)
+```
+
+#### Write initial message
+
+```elixir
+Rill.MessageStore.write_initial(session, message, "streamName")
+```
+
+#### Write batch of messages to the same stream
+
+```elixir
+Rill.MessageStore.write(session, [msg1, msg2], "streamName", expected_version: version)
+```
+
+### Define a Projection
+
+```elixir
+defmodule Person do
+  defstruct [name: "", age: 0]
+end
+
+defmodule Renamed do
+  use Rill, :message
+  defmessage([:name])
+end
+
+defmodule Person.Projection do
+  use Rill, :projection
+
+  @impl Rill.EntityProjection
+  # Pattern matching on the first argument it's REQUIRED to determine the
+  # struct that needs to be used to decode the message coming from the
+  # MessageStore
+  deftranslate apply(%Renamed{} = renamed, person) do
+    Map.put(person, :name, renamed.name)
+  end
+end
+
+# A projection is not usually called directly
+
+# Simulates a message coming from the database
+message_data = %Rill.MessageStore.MessageData.Read{
+  data: %{name: "Joe"},
+  type: "Renamed"
+}
+person = %Person{name: "Fran", age: 29}
+person = Person.Projection.apply(person, message_data)
+
+person.name # => "Joe"
+```
+
+### Create a Session
+
+A `Rill.Session` is just a struct, but there are some utilities available.
+
+#### Postgres
+
+```elixir
+{:ok, _} = Repo.start_link([name: Repo])
+session = Rill.MessageStore.Ecto.Postgres.Session.new(repo)
+```
+
+#### Memory
+
+```elixir
+{:ok, pid} = Rill.MessageStore.Memory.Server.start_link()
+session = Rill.MessageStore.Memory.Session.new(pid)
+```
+
+### Define a Store
+
+```elixir
+defmodule Store do
+  use Rill.EntityStore,
+    # Initial value for the entity, can be omitted and defaults to `nil`
+    entity: %Person{},
+    # Stream name category
+    category: "person",
+    # Projection module
+    projection: Person.Projection
+end
+
+[person] = Store.fetch("123")
+
+# Including the current version
+[person, version] = Store.fetch("123", include: :version) # or [:version]
+```
+
+### Define a Handler
+
+```elixir
+defmodule Renamed do
+  use Rill, :message
+  defmessage([:name])
+end
+
+defmodule Handler do
+  use Rill, :handler
+
+  @impl Rill.Messaging.Handler
+  # Pattern matching on the first argument it's REQUIRED to determine the
+  # struct that needs to be used to decode the message coming from the
+  # MessageStore
+  deftranslate handle(%Renamed{} = renamed, _session) do
+    IO.inspect(renamed)
+    IO.puts("hello")
+  end
+end
+
+# A handler is not usually called directly
+
+# Simulates a message coming from the database
+message_data = %Rill.MessageStore.MessageData.Read{
+  data: %{name: "Joe"},
+  type: "Renamed"
+}
+
+Handler.handle(session, message_data)
+```
+
+### Start a Consumer
+
+```elixir
+Rill.Consumer.start_link([
+  # The following arguments are all required
+  handlers: [Handler],
+  stream_name: "person",
+  # Must be supplied to uniquely identify this consumer
+  identifier: "personIdentifier",
+  session: session
+  # Optionally can pass a `condition` argument, handled by the underlying
+  # MessageStore adapter
+])
+```
+
+Alternatively, a `Consumer` can be started from a `Supervisor`:
+
+```elixir
+Supervisor.start_link(
+  [
+    {Rill.Consumer,
+     [
+       handlers: [Handler],
+       stream_name: "person",
+       identifier: "personIdentifier",
+       session: session
+     ]}
+  ],
+  strategy: :one_for_one
+)
+```
+
+### Framework at a Glance
 
 ```elixir
 
@@ -84,7 +294,7 @@ defmodule Renamed do
   defmessage([:name])
 end
 
-defmodule PersonProjection do
+defmodule Person.Projection do
   use Rill, :projection
 
   @impl Rill.EntityProjection
@@ -95,7 +305,7 @@ end
 
 defmodule Repo do
   use Ecto.Repo,
-    otp_app: :rill,
+    otp_app: :my_app,
     adapter: Ecto.Adapters.Postgres
 
   def init(_, opts) do
@@ -107,7 +317,7 @@ defmodule Store do
   use Rill.EntityStore,
     entity: %Person{},
     category: "person",
-    projection: PersonProjection
+    projection: Person.Projection
 end
 
 defmodule Handler do
@@ -116,7 +326,6 @@ defmodule Handler do
   @impl Rill.Messaging.Handler
   deftranslate handle(%Renamed{} = renamed, _session) do
     IO.inspect(renamed)
-    IO.puts("hello")
   end
 end
 
@@ -126,17 +335,13 @@ defmodule Run do
 
     session = Rill.MessageStore.Ecto.Postgres.Session.new(Repo)
 
-    # renamed = %Renamed{name: "foo1234r"}
-    # MessageStore.write(renamed, "person-123")
-    # Store.get(session, "123", include: [:version])
-    # Rill.Messaging.Handler(Handler, MessageStore.read("person-123"))
-    # {:ok, pid2} = Consumer.start_link()
-    # IO.inspect({pid1, pid2})
-    # Process.unlink(pid1)
-    # Process.unlink(pid2)
+    renamed = %Renamed{name: "Joe"}
+    MessageStore.write(renamed, "person-123")
+    
+    [person, version] = Store.get(session, "123", include: [:version])
+    person.name # => "Joe"
+    version # => 0
 
-    # :timer.sleep(1500)
-    # Process.exit(pid2, "timetogo")
     Supervisor.start_link(
       [
         {Rill.Consumer,
@@ -151,16 +356,9 @@ defmodule Run do
       ],
       strategy: :one_for_one
     )
-  end
 
-  def run2 do
-    {:ok, pid1} = Rill.MessageStore.Memory.Server.start_link(name: :foo)
-
-    session = Rill.MessageStore.Memory.Session.new(:foo)
-
-    renamed = %Renamed{name: "foo1234r"}
-    Rill.MessageStore.write(session, renamed, "person-123")
-    Store.get(session, "123", include: [:version])
+    :timer.sleep(1500)
+    # IO.inspect will output `renamed` content
   end
 end
 ```
