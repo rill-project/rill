@@ -11,7 +11,7 @@ Install via Hex:
 ```elixir
 def deps do
   [
-    {:rill, "~> 0.5.1"}
+    {:rill, "~> 0.6.0"}
   ]
 end
 ```
