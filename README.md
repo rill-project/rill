@@ -11,7 +11,7 @@ Install via Hex:
 ```elixir
 def deps do
   [
-    {:rill, "~> 0.6.0"}
+    {:rill, "~> 0.6.1"}
   ]
 end
 ```
@@ -332,6 +332,16 @@ message_data = %Rill.MessageStore.MessageData.Read{
 
 Handler.handle(session, message_data)
 ```
+
+When a handler is defined using `use Rill, :handler`, the following utilities
+are provided:
+
+- `try_version` macro, which rescue any
+  `Rill.MessageStore.ExpectedVersion.Error` and returns `nil`
+- `MessageStore` is available (automatically aliased)
+- `Message` is available (automatically aliased)
+- The `stream_name/1`, `/2` and `/3` are imported automatically from
+  `Rill.MessageStore.StreamName`
 
 ### Start a Consumer
 
