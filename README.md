@@ -1,6 +1,8 @@
 # Rill
 
-Translation of [Eventide Framework](https://eventide-project.org/) in Elixir
+Translation of [Eventide Framework](https://eventide-project.org/) in Elixir.
+Please refer to their [documentation](http://docs.eventide-project.org/)
+for learning purposes or finding out arguments of some functions.
 
 ## Installation
 
@@ -79,6 +81,88 @@ session = Rill.MessageStore.Ecto.Postgres.Session.new(MyRepo)
 message = %Renamed{name: "foo"}
 
 Rill.MessageStore.write(session, message, "person")
+```
+
+## Framework at a Glance
+
+```elixir
+
+defmodule Person do
+  defstruct [:name, :age]
+end
+
+defmodule Renamed do
+  use Rill, :message
+  defmessage([:name])
+end
+
+defmodule Person.Projection do
+  use Rill, :projection
+
+  @impl Rill.EntityProjection
+  deftranslate apply(%Renamed{} = renamed, person) do
+    Map.put(person, :name, renamed.name)
+  end
+end
+
+defmodule Repo do
+  use Ecto.Repo,
+    otp_app: :my_app,
+    adapter: Ecto.Adapters.Postgres
+
+  def init(_, opts) do
+    {:ok, Keyword.put(opts, :url, System.get_env("DATABASE_URL"))}
+  end
+end
+
+defmodule Store do
+  use Rill.EntityStore,
+    entity: %Person{},
+    category: "person",
+    projection: Person.Projection
+end
+
+defmodule Handler do
+  use Rill, :handler
+
+  @impl Rill.Messaging.Handler
+  deftranslate handle(%Renamed{} = renamed, _session) do
+    IO.inspect(renamed)
+  end
+end
+
+defmodule Run do
+  def run do
+    {:ok, pid1} = Repo.start_link(name: Repo)
+
+    session = Rill.MessageStore.Ecto.Postgres.Session.new(Repo)
+
+    renamed = %Renamed{name: "Joe"}
+    MessageStore.write(renamed, "person-123")
+    
+    [person, version] = Store.get(session, "123", include: [:version])
+    person.name # => "Joe"
+    version # => 0
+
+    Supervisor.start_link(
+      [
+        {Rill.Consumer,
+         [
+           handlers: [Handler],
+           stream_name: "person",
+           identifier: "personIdentifier",
+           session: session,
+           poll_interval_milliseconds: 10000,
+           batch_size: 1
+         ]}
+      ],
+      strategy: :one_for_one
+    )
+
+    :timer.sleep(1500)
+    # IO.inspect will output `renamed` content
+  end
+end
 ```
 
 ## Features
@@ -279,86 +363,4 @@ Supervisor.start_link(
   ],
   strategy: :one_for_one
 )
-```
-
-### Framework at a Glance
-
-```elixir
-
-defmodule Person do
-  defstruct [:name, :age]
-end
-
-defmodule Renamed do
-  use Rill, :message
-  defmessage([:name])
-end
-
-defmodule Person.Projection do
-  use Rill, :projection
-
-  @impl Rill.EntityProjection
-  deftranslate apply(%Renamed{} = renamed, person) do
-    Map.put(person, :name, renamed.name)
-  end
-end
-
-defmodule Repo do
-  use Ecto.Repo,
-    otp_app: :my_app,
-    adapter: Ecto.Adapters.Postgres
-
-  def init(_, opts) do
-    {:ok, Keyword.put(opts, :url, System.get_env("DATABASE_URL"))}
-  end
-end
-
-defmodule Store do
-  use Rill.EntityStore,
-    entity: %Person{},
-    category: "person",
-    projection: Person.Projection
-end
-
-defmodule Handler do
-  use Rill, :handler
-
-  @impl Rill.Messaging.Handler
-  deftranslate handle(%Renamed{} = renamed, _session) do
-    IO.inspect(renamed)
-  end
-end
-
-defmodule Run do
-  def run do
-    {:ok, pid1} = Repo.start_link(name: Repo)
-
-    session = Rill.MessageStore.Ecto.Postgres.Session.new(Repo)
-
-    renamed = %Renamed{name: "Joe"}
-    MessageStore.write(renamed, "person-123")
-    
-    [person, version] = Store.get(session, "123", include: [:version])
-    person.name # => "Joe"
-    version # => 0
-
-    Supervisor.start_link(
-      [
-        {Rill.Consumer,
-         [
-           handlers: [Handler],
-           stream_name: "person",
-           identifier: "personIdentifier",
-           session: session,
-           poll_interval_milliseconds: 10000,
-           batch_size: 1
-         ]}
-      ],
-      strategy: :one_for_one
-    )
-
-    :timer.sleep(1500)
-    # IO.inspect will output `renamed` content
-  end
-end
 ```
