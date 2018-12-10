@@ -17,8 +17,8 @@ defmodule Rill do
       alias Rill.MessageStore
       alias Rill.Messaging.Message
 
-      require Rill
-      import Rill, only: [try_version: 1]
+      require Rill.Try
+      import Rill.Try, only: [try_version: 1]
 
       import Rill.MessageStore.StreamName,
         only: [stream_name: 1, stream_name: 2, stream_name: 3]
@@ -31,26 +31,6 @@ defmodule Rill do
     end
   end
 
-  defmacro try(error, do: block) do
-    quote do
-      try do
-        unquote(block)
-      rescue
-        unquote(error) -> nil
-      end
-    end
-  end
-
-  defmacro try_version(do: block) do
-    quote do
-      try do
-        unquote(block)
-      rescue
-        Rill.MessageStore.ExpectedVersion.Error -> nil
-      end
-    end
-  end
-
   defmacro __using__(which) when is_atom(which) do
     apply(__MODULE__, which, [])
   end
@@ -60,7 +40,7 @@ defmodule Rill do
   end
 
   defmacro __using__([which | opts])
-           when is_atom(which) and is_list(which_opts) do
+           when is_atom(which) and is_list(opts) do
     apply(__MODULE__, which, [opts])
   end
 end
