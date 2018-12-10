@@ -116,10 +116,12 @@ defmodule Repo do
 end
 
 defmodule Store do
-  use Rill.EntityStore,
+  use Rill, [
+    :store,
     entity: %Person{},
     category: "person",
     projection: Person.Projection
+  ]
 end
 
 defmodule Handler do
@@ -286,13 +288,15 @@ session = Rill.MessageStore.Memory.Session.new(pid)
 
 ```elixir
 defmodule Store do
-  use Rill.EntityStore,
+  use Rill, [
+    :store
     # Initial value for the entity, can be omitted and defaults to `nil`
     entity: %Person{},
     # Stream name category
     category: "person",
     # Projection module
     projection: Person.Projection
+  ]
 end
 
 [person] = Store.fetch("123")

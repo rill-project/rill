@@ -25,6 +25,12 @@ defmodule Rill do
     end
   end
 
+  def store(opts) do
+    quote do
+      use Rill.EntityStore, unquote(opts)
+    end
+  end
+
   defmacro try(error, do: block) do
     quote do
       try do
@@ -47,5 +53,14 @@ defmodule Rill do
 
   defmacro __using__(which) when is_atom(which) do
     apply(__MODULE__, which, [])
+  end
+
+  defmacro __using__([which]) when is_atom(which) do
+    apply(__MODULE__, which, [])
+  end
+
+  defmacro __using__([which | opts])
+           when is_atom(which) and is_list(which_opts) do
+    apply(__MODULE__, which, [opts])
   end
 end
