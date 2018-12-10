@@ -9,8 +9,13 @@ defmodule Rill.MixProject do
       version: @version,
       elixir: "~> 1.7",
       deps: deps(),
+      aliases: aliases(),
       elixirc_paths: elixirc_paths(Mix.env()),
       test_paths: ["test/automated"],
+      consolidate_protocols: consolidate_protocols(Mix.env()),
+      preferred_cli_env: [
+        itest: :dev
+      ],
       dialyzer: [
         plt_add_apps: [:mnesia],
         flags: [
@@ -31,7 +36,7 @@ defmodule Rill.MixProject do
   end
 
   # Run "mix help deps" to learn about dependencies.
-  defp deps do
+  def deps do
     [
       {:dialyxir, ">= 1.0.0-rc.3", only: [:dev], runtime: false},
       {:ecto, ">= 3.0.0"},
@@ -43,6 +48,16 @@ defmodule Rill.MixProject do
     ]
   end
 
-  defp elixirc_paths(:test), do: ["lib", "test/automated/support"]
-  defp elixirc_paths(_), do: ["lib"]
+  def elixirc_paths(:test), do: ["lib", "test/automated/support"]
+  def elixirc_paths(_), do: ["lib"]
+
+  def consolidate_protocols(:test), do: false
+  def consolidate_protocols(:dev), do: false
+  def consolidate_protocols(_), do: true
+
+  def aliases do
+    [
+      itest: ["run"]
+    ]
+  end
 end

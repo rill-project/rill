@@ -17,6 +17,7 @@ defmodule Rill.MapCopy do
     copying_keys = Map.keys(filtered_data)
 
     new_receiver = Map.merge(receiver, filtered_data)
+
     {new_receiver, copying_keys}
   end
 end

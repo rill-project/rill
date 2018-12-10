@@ -3,4 +3,9 @@ use Mix.Config
 config :logger,
   backends: [:console],
   utc_log: true,
-  compile_time_purge_level: :error
+  format:
+    "\n$time {$metadata[$application]} $metadata[$level] $levelpad$message\n",
+  compile_time_purge_matching: [
+    [level_lower_than: :debug]
+  ],
+  device: :standard_error

@@ -1,4 +1,6 @@
 defmodule Rill.EntityStore do
+  use Rill.Kernel
+
   alias Rill.MessageStore.StreamName
   alias Rill.EntityProjection
   alias Rill.Session
@@ -31,6 +33,14 @@ defmodule Rill.EntityStore do
           opts :: get_option()
         ) :: any() | list()
   def get(%Session{} = session, category, projection, entity, id, opts \\ []) do
+    Log.debug(fn ->
+      id = inspect(id)
+      projection = inspect(projection)
+
+      {"Getting entity (ID: #{id}, Projection: #{projection})",
+       tags: [:trace, :get]}
+    end)
+
     include =
       opts
       |> Keyword.get(:include, [])
@@ -60,6 +70,20 @@ defmodule Rill.EntityStore do
         do: nil,
         else: info.entity
 
+    Log.info(fn ->
+      id = inspect(id)
+      version = inspect(info.version)
+      projection = inspect(projection)
+
+      {"Get entity done (ID: #{id}, Version: #{version}, Projection: #{
+         projection
+       })", tags: [:get]}
+    end)
+
+    Log.info(fn ->
+      {inspect(entity_info, pretty: true), tags: [:data, :entity]}
+    end)
+
     include
     |> Enum.reduce([entity_info], fn field, fields ->
       [info[field] | fields]
@@ -80,10 +104,27 @@ defmodule Rill.EntityStore do
           opts :: get_option()
         ) :: any() | list()
   def fetch(%Session{} = session, category, projection, entity, id, opts \\ []) do
+    Log.debug(fn ->
+      id = inspect(id)
+      projection = inspect(projection)
+
+      {"Fetching entity (ID: #{id}, Projection: #{projection})",
+       tags: [:trace, :fetch]}
+    end)
+
     results = get(session, category, projection, entity, id, opts)
 
     {entity_info, args} = List.pop_at(results, 0)
     entity_info = entity_info || entity
+
+    Log.info(fn ->
+      id = inspect(id)
+      projection = inspect(projection)
+
+      {"Fetch entity done (ID: #{id}, Projection: #{projection})",
+       tags: [:fetch]}
+    end)
+
     [entity_info | args]
   end
 

@@ -140,7 +140,7 @@ defmodule Run do
     session = Rill.MessageStore.Ecto.Postgres.Session.new(Repo)
 
     renamed = %Renamed{name: "Joe"}
-    MessageStore.write(renamed, "person-123")
+    Rill.MessageStore.write(session, renamed, "person-123")
     
     [person, version] = Store.get(session, "123", include: [:version])
     person.name # => "Joe"
