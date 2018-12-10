@@ -383,7 +383,8 @@ Supervisor.start_link(
 
 - [x] Logging
 - [ ] Tests
-- [ ] More test utilities
+- [ ] Test utilities
 - [ ] Position Store
 - [ ] Store Cache
+- [ ] Snapshotting
 - [ ] View Data

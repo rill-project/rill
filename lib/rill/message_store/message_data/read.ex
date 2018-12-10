@@ -23,6 +23,17 @@ defmodule Rill.MessageStore.MessageData.Read do
           time: NaiveDateTime.t()
         }
 
+  @spec build(data :: struct()) :: %__MODULE__{}
+  def build(%{__struct__: module} = data) do
+    type =
+      module
+      |> Module.split()
+      |> List.last()
+      |> to_string()
+
+    build(%{type: type, data: Map.from_struct(data)})
+  end
+
   @spec build(data :: map()) :: %__MODULE__{}
   def build(%{} = data) do
     {read, _} = MapCopy.copy_existing(%__MODULE__{}, data)
