@@ -33,12 +33,11 @@ defmodule Rill.EntityStore do
           opts :: get_option()
         ) :: any() | list()
   def get(%Session{} = session, category, projection, entity, id, opts \\ []) do
-    Log.debug(fn ->
+    Log.trace(fn ->
       id = inspect(id)
       projection = inspect(projection)
 
-      {"Getting entity (ID: #{id}, Projection: #{projection})",
-       tags: [:trace, :get]}
+      {"Getting entity (ID: #{id}, Projection: #{projection})", tags: [:get]}
     end)
 
     include =
@@ -104,12 +103,11 @@ defmodule Rill.EntityStore do
           opts :: get_option()
         ) :: any() | list()
   def fetch(%Session{} = session, category, projection, entity, id, opts \\ []) do
-    Log.debug(fn ->
+    Log.trace(fn ->
       id = inspect(id)
       projection = inspect(projection)
 
-      {"Fetching entity (ID: #{id}, Projection: #{projection})",
-       tags: [:trace, :fetch]}
+      {"Fetching entity (ID: #{id}, Projection: #{projection})", tags: [:fetch]}
     end)
 
     results = get(session, category, projection, entity, id, opts)

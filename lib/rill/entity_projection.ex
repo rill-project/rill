@@ -1,4 +1,6 @@
 defmodule Rill.EntityProjection do
+  use Rill.Kernel
+
   alias Rill.MessageStore.MessageData.Read
   alias Rill.Messaging.Message.Dictionary
 
@@ -27,13 +29,30 @@ defmodule Rill.EntityProjection do
         %Dictionary{} = dictionary,
         %Read{} = message_data
       ) do
+    Log.trace(fn ->
+      {"Applying event (Type: #{message_data.type})", tags: [:apply]}
+    end)
+
     msg = Dictionary.translate(dictionary, message_data)
 
-    if is_nil(msg) do
-      entity
-    else
-      projection.apply(msg, entity)
-    end
+    Log.trace(fn ->
+      {inspect(msg, pretty: true), tags: [:data, :message]}
+    end)
+
+    new_entity =
+      if is_nil(msg) do
+        entity
+      else
+        projection.apply(msg, entity)
+      end
+
+    Log.info(fn ->
+      {"Applied event (Type: #{message_data.type})", tags: [:apply]}
+    end)
+
+    Log.trace(fn -> {inspect(msg, pretty: true), tags: [:data, :message]} end)
+
+    new_entity
   end
 
   @spec apply(
