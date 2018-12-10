@@ -1,7 +1,9 @@
 defmodule Rill.Messaging.Handler do
+  use Rill.Kernel
   alias Rill.Session
   alias Rill.MessageStore.MessageData.Read
   alias Rill.Messaging.Message.Dictionary
+  alias Rill.Logger.Text, as: LogText
 
   @callback handle(message :: struct(), session :: Session.t()) :: no_return()
   @optional_callbacks handle: 2
@@ -29,12 +31,21 @@ defmodule Rill.Messaging.Handler do
         %Read{} = message_data
       ) do
     msg = Dictionary.translate(dictionary, message_data)
+    Log.trace(fn -> "Handling (#{LogText.message_data(message_data)})" end)
 
-    if is_nil(msg) do
-      nil
-    else
-      handler.handle(msg, session)
-    end
+    Log.trace(fn ->
+      {inspect(message_data, pretty: true), tags: [:data, :message]}
+    end)
+
+    handled_result =
+      if is_nil(msg) do
+        nil
+      else
+        handler.handle(msg, session)
+      end
+
+    Log.info(fn -> "Handled (#{LogText.message_data(message_data)})" end)
+    handled_result
   end
 
   @spec handle(

@@ -1,4 +1,5 @@
 defmodule Rill.MessageStore.Reader do
+  use Rill.Kernel
   alias Rill.MessageStore
   alias Rill.Session
 
@@ -19,12 +20,24 @@ defmodule Rill.MessageStore.Reader do
     do: handle(session, stream_name, handler, times, [])
 
   def handle(%Session{} = session, stream_name, handler, times, opts) do
+    Log.trace(fn ->
+      "Handling (Stream Name: #{stream_name}, Handler: #{handler}, Times: #{
+        times
+      })"
+    end)
+
     repeat_times = Range.new(1, times)
 
     Enum.each(repeat_times, fn _ ->
       session
       |> MessageStore.read(stream_name, opts)
       |> Enum.each(fn message -> handler.handle(session, message) end)
+    end)
+
+    Log.info(fn ->
+      "Handled (Stream Name: #{stream_name}, Handler: #{handler}, Times: #{
+        times
+      })"
     end)
 
     session

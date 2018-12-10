@@ -1,4 +1,5 @@
 defmodule Rill.MessageStore.Base do
+  use Rill.Kernel
   alias Rill.Messaging.Message.Transform
   alias Rill.MessageStore.MessageData.Read
   alias Rill.MessageStore.StreamName
@@ -12,6 +13,10 @@ defmodule Rill.MessageStore.Base do
           fun :: nil | (%Read{}, term() -> term())
         ) :: Enumerable.t() | term()
   def read(session, stream_name, opts \\ [], fun \\ nil) do
+    Log.trace(fn ->
+      {"Reading (Stream Name: #{stream_name})", tags: [:read]}
+    end)
+
     database = session.database
     start_position = Keyword.get(opts, :position)
     start_fun = fn -> start_position end
@@ -33,9 +38,16 @@ defmodule Rill.MessageStore.Base do
 
     stream = Stream.resource(start_fun, next_fun, after_fun)
 
-    if is_nil(fun),
-      do: stream,
-      else: Enum.reduce(stream, nil, fun)
+    output =
+      if is_nil(fun),
+        do: stream,
+        else: Enum.reduce(stream, nil, fun)
+
+    Log.info(fn ->
+      {"Read completed (Stream Name: #{stream_name})", tags: [:read]}
+    end)
+
+    output
   end
 
   @spec write(
@@ -60,28 +72,44 @@ defmodule Rill.MessageStore.Base do
 
   def write(session, messages, stream_name, opts)
       when is_list(messages) do
+    Log.trace(fn ->
+      {"Writing (Stream Name: #{stream_name})", tags: [:write]}
+    end)
+
+    Log.trace(fn ->
+      {inspect(messages, pretty: true), tags: [:write, :data]}
+    end)
+
     database = session.database
 
-    messages
-    |> Stream.with_index()
-    |> Enum.reduce(nil, fn {message, index}, _ ->
-      message_data = Transform.write(message)
+    position =
+      messages
+      |> Stream.with_index()
+      |> Enum.reduce(nil, fn {message, index}, _ ->
+        message_data = Transform.write(message)
 
-      expected_version = Keyword.get(opts, :expected_version)
+        expected_version = Keyword.get(opts, :expected_version)
 
-      expected_version =
-        if is_nil(expected_version) do
-          nil
-        else
-          expected_version
-          |> ExpectedVersion.canonize()
-          |> Kernel.+(index)
-        end
+        expected_version =
+          if is_nil(expected_version) do
+            nil
+          else
+            expected_version
+            |> ExpectedVersion.canonize()
+            |> Kernel.+(index)
+          end
 
-      database.put(session, message_data, stream_name,
-        expected_version: expected_version
-      )
+        database.put(session, message_data, stream_name,
+          expected_version: expected_version
+        )
+      end)
+
+    Log.info(fn ->
+      {"Write Completed (Stream Name: #{stream_name}, Position: #{position})",
+       tags: [:write]}
     end)
+
+    position
   end
 
   @spec write_initial(

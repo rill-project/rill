@@ -8,6 +8,7 @@ defmodule Rill.MessageStore.Ecto.Postgres.Database do
 
   @behaviour Rill.MessageStore.Database
 
+  use Rill.Kernel
   alias Rill.Session
   alias Rill.MessageStore.StreamName
   alias Rill.MessageStore.MessageData.Write
@@ -44,6 +45,10 @@ defmodule Rill.MessageStore.Ecto.Postgres.Database do
   @impl Rill.MessageStore.Database
   def get(%Session{} = session, stream_name, opts \\ [])
       when is_binary(stream_name) and is_list(opts) do
+    Log.trace(fn ->
+      {"Getting (Stream Name: #{stream_name})", tags: [:get]}
+    end)
+
     repo = Session.get_config(session, :repo)
     condition = constrain_condition(opts[:condition])
     position = opts[:position] || Defaults.position()
@@ -51,24 +56,57 @@ defmodule Rill.MessageStore.Ecto.Postgres.Database do
     sql = sql_get(stream_name)
     params = [stream_name, position, batch_size, condition]
 
-    repo
-    |> Ecto.Adapters.SQL.query!(sql, params)
-    |> Map.fetch!(:rows)
-    |> convert()
+    messages =
+      repo
+      |> Ecto.Adapters.SQL.query!(sql, params)
+      |> Map.fetch!(:rows)
+      |> convert()
+
+    Log.debug(fn ->
+      count = length(messages)
+
+      {"Finished Getting Messages (Stream Name: #{stream_name}, Count: #{count}, Position: #{
+         inspect(position)
+       }, Batch Size: #{inspect(batch_size)}, Condition: #{
+         condition || "(none)"
+       })", tags: [:get]}
+    end)
+
+    Log.info(fn ->
+      {"Get Completed (Stream Name: #{stream_name})", tags: [:get]}
+    end)
+
+    messages
   end
 
   @impl Rill.MessageStore.Database
   def get_last(%Session{} = session, stream_name)
       when is_binary(stream_name) do
+    Log.trace(fn ->
+      {"Getting Last (Stream Name: #{stream_name})", tags: [:get, :get_last]}
+    end)
+
     repo = Session.get_config(session, :repo)
     sql = sql_get_last(stream_name)
     params = [stream_name]
 
-    repo
-    |> Ecto.Adapters.SQL.query!(sql, params)
-    |> Map.fetch!(:rows)
-    |> List.last()
-    |> convert_row()
+    last_message =
+      repo
+      |> Ecto.Adapters.SQL.query!(sql, params)
+      |> Map.fetch!(:rows)
+      |> List.last()
+      |> convert_row()
+
+    Log.debug(fn ->
+      {inspect(last_message, pretty: true), tags: [:get, :get_last, :data]}
+    end)
+
+    Log.info(fn ->
+      {"Get Last Completed (Stream Name: #{stream_name})",
+       tags: [:get, :get_last]}
+    end)
+
+    last_message
   end
 
   @impl Rill.MessageStore.Database
@@ -82,6 +120,14 @@ defmodule Rill.MessageStore.Ecto.Postgres.Database do
       |> Keyword.get(:expected_version)
       |> ExpectedVersion.canonize()
 
+    Log.trace(fn ->
+      {"Putting (Stream Name: #{stream_name}, Expected Version: #{
+         inspect(expected_version)
+       })", tags: [:put]}
+    end)
+
+    Log.debug(fn -> {inspect(msg, pretty: true), tags: [:put, :data]} end)
+
     %{id: id, type: type, data: data, metadata: metadata} = msg
     id = id || identifier_get.()
     data = Serialize.data(data)
@@ -89,10 +135,18 @@ defmodule Rill.MessageStore.Ecto.Postgres.Database do
 
     params = [id, stream_name, type, data, metadata, expected_version]
 
-    repo
-    |> execute(@sql_put, params)
-    |> Map.fetch!(:rows)
-    |> convert_position()
+    position =
+      repo
+      |> execute(@sql_put, params)
+      |> Map.fetch!(:rows)
+      |> convert_position()
+
+    Log.info(fn ->
+      {"Put Completed (Stream Name: #{stream_name}, Position: #{position})",
+       tags: [:put]}
+    end)
+
+    position
   end
 
   @spec constrain_condition(condition :: String.t() | nil) :: String.t() | nil
