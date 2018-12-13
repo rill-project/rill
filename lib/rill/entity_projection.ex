@@ -1,5 +1,6 @@
 defmodule Rill.EntityProjection do
   use Rill.Kernel
+  import Kernel, except: [apply: 2, apply: 3]
 
   alias Rill.MessageStore.MessageData.Read
   alias Rill.Messaging.Message.Dictionary
@@ -14,7 +15,7 @@ defmodule Rill.EntityProjection do
         ) :: term()
   def apply(projection, entity, message_data) do
     dictionary = Dictionary.get_dictionary(projection)
-    __MODULE__.apply(projection, entity, dictionary, message_data)
+    apply(projection, entity, dictionary, message_data)
   end
 
   @spec apply(
@@ -63,7 +64,7 @@ defmodule Rill.EntityProjection do
         ) :: term()
   def apply(projection, entity, %Dictionary{} = dictionary, messages_data) do
     Enum.reduce(messages_data, entity, fn message_data, current_entity ->
-      __MODULE__.apply(projection, current_entity, dictionary, message_data)
+      apply(projection, current_entity, dictionary, message_data)
     end)
   end
 
@@ -71,6 +72,7 @@ defmodule Rill.EntityProjection do
     quote do
       use Rill.Messaging.Message.Dictionary
       @behaviour unquote(__MODULE__)
+      import Kernel, except: [apply: 2, apply: 3]
 
       def apply(entity, %Rill.MessageStore.MessageData.Read{} = message_data) do
         unquote(__MODULE__).apply(__MODULE__, entity, message_data)
