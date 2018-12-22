@@ -1,7 +1,8 @@
 defmodule Rill.MixProject do
   use Mix.Project
 
-  @version "VERSION" |> File.read!() |> String.trim()
+  @external_resource path = Path.join(__DIR__, "VERSION")
+  @version path |> File.read!() |> String.trim()
 
   def project do
     [
