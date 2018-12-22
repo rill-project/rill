@@ -17,6 +17,7 @@ defmodule Rill.Consumer do
             session: nil
 
   use Rill.Kernel
+  alias Rill.MessageStore.StreamName
   alias Rill.MessageStore.MessageData.Read
   alias Rill.Messaging.Handler
   alias Rill.Logger.Text, as: LogText
@@ -27,7 +28,7 @@ defmodule Rill.Consumer do
           messages: list(%Read{}),
           identifier: String.t(),
           handlers: list(module()),
-          stream_name: String.t(),
+          stream_name: StreamName.t(),
           poll_interval_milliseconds: pos_integer(),
           batch_size: pos_integer(),
           condition: nil | term(),

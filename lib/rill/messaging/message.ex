@@ -6,6 +6,7 @@ defmodule Rill.Messaging.Message do
   alias Rill.Messaging.Message.Metadata
   alias Rill.MessageStore.MessageData.Read
   alias Rill.MapCopy
+  alias Rill.MessageStore.StreamName
 
   @type message_or_type :: String.t() | atom() | struct()
 
@@ -160,7 +161,7 @@ defmodule Rill.Messaging.Message do
   @doc "Builds struct for `struct_name` with `correlation_stream_name` set"
   @spec correlate(
           struct_name :: module(),
-          correlation_stream_name :: String.t()
+          correlation_stream_name :: StreamName.t()
         ) :: struct()
   def correlate(struct_name, correlation_stream_name)
       when is_atom(struct_name) and is_binary(correlation_stream_name) do
@@ -172,8 +173,10 @@ defmodule Rill.Messaging.Message do
     Map.put(map, :metadata, metadata)
   end
 
-  @spec correlate(message :: struct(), correlation_stream_name :: String.t()) ::
-          struct()
+  @spec correlate(
+          message :: struct(),
+          correlation_stream_name :: StreamName.t()
+        ) :: struct()
   def correlate(%{} = message, correlation_stream_name)
       when is_binary(correlation_stream_name) do
     metadata = Metadata.correlate(message.metadata, correlation_stream_name)

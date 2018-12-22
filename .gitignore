@@ -26,3 +26,4 @@ mix.lock
 .envrc
 .ruby-version
 .tool-versions
+/config/*.secret.exs

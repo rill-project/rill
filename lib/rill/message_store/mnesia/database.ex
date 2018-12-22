@@ -1,4 +1,4 @@
-defmodule Rill.MessageStore.Ecto.Postgres.Database do
+defmodule Rill.MessageStore.Mnesia.Database do
   defmodule Defaults do
     @spec position() :: 0
     def position, do: 0
@@ -9,17 +9,18 @@ defmodule Rill.MessageStore.Ecto.Postgres.Database do
   @behaviour Rill.MessageStore.Database
 
   use Rill.Kernel
+  alias Rill.MessageStore.Mnesia.Repo
   alias Rill.Session
   alias Rill.MessageStore.StreamName
   alias Rill.MessageStore.MessageData.Write
   alias Rill.MessageStore.MessageData.Read
-  alias Rill.MessageStore.Ecto.Postgres.Database.Serialize
-  alias Rill.MessageStore.Ecto.Postgres.Database.Deserialize
+  alias Rill.MessageStore.Mnesia.Database.Serialize
+  alias Rill.MessageStore.Mnesia.Database.Deserialize
   alias Rill.Identifier.UUID.Random, as: Identifier
   alias Rill.MessageStore.ExpectedVersion
   alias Rill.Messaging.Message.Transform
 
-  @type row :: list()
+  @type row :: tuple()
   @type row_map :: %{
           id: String.t(),
           stream_name: StreamName.t(),
@@ -30,17 +31,9 @@ defmodule Rill.MessageStore.Ecto.Postgres.Database do
           metadata: map(),
           time: String.t()
         }
-
-  @wrong_version "Wrong expected version:"
-  @sql_get_params "$1::varchar, $2::bigint, $3::bigint, $4::varchar"
-  @sql_put "SELECT write_message(
-    $1::varchar,
-    $2::varchar,
-    $3::varchar,
-    $4::jsonb,
-    $5::jsonb,
-    $6::bigint
-  )"
+  @type get_messages_fun ::
+          (Repo.namespace(), StreamName.t(), non_neg_integer(), pos_integer() ->
+             Repo.read_messages())
 
   @impl Rill.MessageStore.Database
   def get(%Session{} = session, stream_name, opts \\ [])
@@ -49,17 +42,13 @@ defmodule Rill.MessageStore.Ecto.Postgres.Database do
       {"Getting (Stream Name: #{stream_name})", tags: [:get]}
     end)
 
-    repo = Session.get_config(session, :repo)
-    condition = constrain_condition(opts[:condition])
+    namespace = Session.get_config(session, :namespace)
     position = opts[:position] || Defaults.position()
     batch_size = opts[:batch_size] || Defaults.batch_size()
-    sql = sql_get(stream_name)
-    params = [stream_name, position, batch_size, condition]
 
     messages =
-      repo
-      |> Ecto.Adapters.SQL.query!(sql, params)
-      |> Map.fetch!(:rows)
+      namespace
+      |> mnesia_get(stream_name, position, batch_size)
       |> convert()
 
     Log.debug(fn ->
@@ -67,9 +56,7 @@ defmodule Rill.MessageStore.Ecto.Postgres.Database do
 
       {"Finished Getting Messages (Stream Name: #{stream_name}, Count: #{count}, Position: #{
          inspect(position)
-       }, Batch Size: #{inspect(batch_size)}, Condition: #{
-         condition || "(none)"
-       })", tags: [:get]}
+       }, Batch Size: #{inspect(batch_size)})", tags: [:get]}
     end)
 
     Log.info(fn ->
@@ -86,15 +73,11 @@ defmodule Rill.MessageStore.Ecto.Postgres.Database do
       {"Getting Last (Stream Name: #{stream_name})", tags: [:get, :get_last]}
     end)
 
-    repo = Session.get_config(session, :repo)
-    sql = sql_get_last(stream_name)
-    params = [stream_name]
+    namespace = Session.get_config(session, :namespace)
 
     last_message =
-      repo
-      |> Ecto.Adapters.SQL.query!(sql, params)
-      |> Map.fetch!(:rows)
-      |> List.last()
+      namespace
+      |> mnesia_get_last(stream_name)
       |> convert_row()
 
     Log.debug(fn ->
@@ -112,7 +95,7 @@ defmodule Rill.MessageStore.Ecto.Postgres.Database do
   @impl Rill.MessageStore.Database
   def put(%Session{} = session, %Write{} = msg, stream_name, opts \\ [])
       when is_binary(stream_name) and is_list(opts) do
-    repo = Session.get_config(session, :repo)
+    namespace = Session.get_config(session, :namespace)
     identifier_get = Keyword.get(opts, :identifier_get) || (&Identifier.get/0)
 
     expected_version =
@@ -136,9 +119,8 @@ defmodule Rill.MessageStore.Ecto.Postgres.Database do
     params = [id, stream_name, type, data, metadata, expected_version]
 
     position =
-      repo
-      |> execute(@sql_put, params)
-      |> Map.fetch!(:rows)
+      namespace
+      |> mnesia_put(params)
       |> convert_position()
 
     Log.info(fn ->
@@ -149,37 +131,48 @@ defmodule Rill.MessageStore.Ecto.Postgres.Database do
     position
   end
 
-  @spec constrain_condition(condition :: String.t() | nil) :: String.t() | nil
-  def constrain_condition(nil), do: nil
+  @spec mnesia_get(
+          ns :: Repo.namespace(),
+          stream_name :: StreamName.t(),
+          position :: non_neg_integer(),
+          batch_size :: pos_integer()
+        ) :: Repo.read_messages()
+  def mnesia_get(ns, stream_name, position, batch_size)
+      when is_binary(stream_name) do
+    {:atomic, result} =
+      if StreamName.category?(stream_name) do
+        Repo.get_category_messages(ns, stream_name, position, batch_size)
+      else
+        Repo.get_stream_messages(ns, stream_name, position, batch_size)
+      end
 
-  def constrain_condition(condition) when is_binary(condition) do
-    "(#{condition})"
+    result
   end
 
-  @spec sql_get(stream_name :: StreamName.t()) :: String.t()
-  def sql_get(stream_name) when is_binary(stream_name) do
-    if StreamName.category?(stream_name) do
-      "SELECT * FROM get_category_messages(#{@sql_get_params});"
-    else
-      "SELECT * FROM get_stream_messages(#{@sql_get_params});"
-    end
+  @spec mnesia_get_last(ns :: Repo.namespace(), stream_name :: StreamName.t()) ::
+          Repo.read_message()
+  def mnesia_get_last(ns, stream_name) when is_binary(stream_name) do
+    {:atomic, result} = Repo.get_last_message(ns, stream_name)
+    result
   end
 
-  @spec sql_get_last(stream_name :: StreamName.t()) :: String.t()
-  def sql_get_last(stream_name) when is_binary(stream_name) do
-    "SELECT * FROM get_last_message($1::varchar)"
+  @spec mnesia_put(ns :: Repo.namespace(), msg :: Repo.write_message()) ::
+          non_neg_integer()
+  def mnesia_put(ns, msg) do
+    {:atomic, position} = Repo.write_message(ns, msg)
+    position
   end
 
-  @spec convert(rows :: [row()]) :: [row_map()]
-  def convert(rows) do
+  @spec convert(rows :: {[row()], term()} | term()) :: [row_map()]
+  def convert({rows, _cont}) do
     Enum.map(rows, &convert_row/1)
   end
 
-  @spec convert_position(rows :: nil | [] | [[non_neg_integer()]]) ::
-          non_neg_integer()
+  def convert(_), do: []
+
+  @spec convert_position(rows :: nil | non_neg_integer()) :: non_neg_integer()
   def convert_position(nil), do: nil
-  def convert_position([]), do: nil
-  def convert_position([[position]]), do: position
+  def convert_position(position), do: position
 
   @spec convert_row(row :: nil | row()) :: row_map()
   def convert_row(nil), do: nil
@@ -205,25 +198,5 @@ defmodule Rill.MessageStore.Ecto.Postgres.Database do
     record
     |> Transform.read()
     |> Read.build()
-  end
-
-  @spec raise_known_error(error :: %Postgrex.Error{}) :: no_return()
-  def raise_known_error(error) do
-    message = to_string(error.postgres.message)
-
-    if String.starts_with?(message, @wrong_version) do
-      raise ExpectedVersion.Error, message: message
-    else
-      raise(error)
-    end
-  end
-
-  @spec execute(repo :: atom(), sql :: String.t(), params :: list()) ::
-          non_neg_integer()
-  def execute(repo, sql, params) do
-    Ecto.Adapters.SQL.query!(repo, sql, params)
-  rescue
-    error in Postgrex.Error -> raise_known_error(error)
-    error -> raise error
   end
 end

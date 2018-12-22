@@ -2,13 +2,14 @@ defmodule Rill.MessageStore.Ecto.Postgres do
   use Rill.MessageStore
 
   alias Rill.Session
+  alias Rill.MessageStore.StreamName
 
   @type transaction_timeout_option ::
           {:transaction_timeout, :infinity | pos_integer()}
   @spec write(
           session :: Session.t(),
           message_or_messages :: struct() | [struct()],
-          stream_name :: String.t(),
+          stream_name :: StreamName.t(),
           opts :: [
             Rill.MessageStore.write_option() | transaction_timeout_option()
           ]

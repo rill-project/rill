@@ -17,14 +17,14 @@ defmodule Rill.Messaging.Message.Metadata do
   ]
 
   @type t :: %__MODULE__{
-          stream_name: String.t(),
+          stream_name: StreamName.t(),
           position: non_neg_integer(),
           global_position: pos_integer(),
-          causation_message_stream_name: String.t() | nil,
+          causation_message_stream_name: StreamName.t() | nil,
           causation_message_position: non_neg_integer() | nil,
           causation_message_global_position: pos_integer() | nil,
-          correlation_stream_name: String.t() | nil,
-          reply_stream_name: String.t() | nil,
+          correlation_stream_name: StreamName.t() | nil,
+          reply_stream_name: StreamName.t() | nil,
           time: NaiveDateTime.t(),
           schema_version: String.t() | nil
         }
@@ -93,15 +93,19 @@ defmodule Rill.Messaging.Message.Metadata do
   def reply?(%__MODULE__{reply_stream_name: nil}), do: false
   def reply?(%__MODULE__{reply_stream_name: _}), do: true
 
-  @spec correlate(metadata :: %__MODULE__{}, stream_name :: String.t()) ::
-          %__MODULE__{}
+  @spec correlate(
+          metadata :: %__MODULE__{},
+          stream_name :: StreamName.t()
+        ) :: %__MODULE__{}
   def correlate(%__MODULE__{} = metadata, stream_name)
       when is_binary(stream_name) do
     Map.put(metadata, :correlation_stream_name, stream_name)
   end
 
-  @spec correlated?(metadata :: %__MODULE__{}, stream_name :: String.t()) ::
-          boolean()
+  @spec correlated?(
+          metadata :: %__MODULE__{},
+          stream_name :: StreamName.t()
+        ) :: boolean()
   def correlated?(%__MODULE__{correlation_stream_name: nil}, _), do: false
 
   def correlated?(%__MODULE__{} = metadata, stream_name) do

@@ -11,13 +11,14 @@ defmodule Rill.MessageStore.MessageData.Read do
   ]
 
   alias Rill.MapCopy
+  alias Rill.MessageStore.StreamName
 
   @type t :: %__MODULE__{
           id: String.t(),
           type: String.t(),
           data: map(),
           metadata: map(),
-          stream_name: String.t(),
+          stream_name: StreamName.t(),
           position: non_neg_integer(),
           global_position: pos_integer(),
           time: NaiveDateTime.t()

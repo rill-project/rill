@@ -3,6 +3,8 @@ defmodule Rill.MessageStore.StreamName do
     defexception [:message]
   end
 
+  @type t :: String.t()
+
   @type stream_name_opts ::
           {:type, String.t() | nil}
           | {:types, [String.t()] | nil}
@@ -47,7 +49,7 @@ defmodule Rill.MessageStore.StreamName do
       else: "#{name}-#{id}"
   end
 
-  @spec get_id(stream_name :: String.t()) :: String.t() | nil
+  @spec get_id(stream_name :: t()) :: String.t() | nil
   def get_id(stream_name) do
     category_name = get_category(stream_name)
 
@@ -62,17 +64,17 @@ defmodule Rill.MessageStore.StreamName do
     end
   end
 
-  @spec category?(stream_name :: String.t()) :: boolean()
+  @spec category?(stream_name :: t()) :: boolean()
   def category?(stream_name), do: !String.contains?(stream_name, "-")
 
-  @spec get_category(stream_name :: String.t()) :: String.t()
+  @spec get_category(stream_name :: t()) :: String.t()
   def get_category(stream_name) do
     stream_name
     |> String.split("-")
     |> List.first()
   end
 
-  @spec get_type_list(stream_name :: String.t()) :: String.t() | nil
+  @spec get_type_list(stream_name :: t()) :: String.t() | nil
   def get_type_list(stream_name) do
     category_name = get_category(stream_name)
 
@@ -86,7 +88,7 @@ defmodule Rill.MessageStore.StreamName do
       else: type
   end
 
-  @spec get_types(stream_name :: String.t()) :: [String.t()]
+  @spec get_types(stream_name :: t()) :: [String.t()]
   def get_types(stream_name) do
     type_list = get_type_list(stream_name)
 
@@ -95,7 +97,7 @@ defmodule Rill.MessageStore.StreamName do
       else: String.split(type_list, "+")
   end
 
-  @spec get_entity_name(stream_name :: String.t()) :: String.t()
+  @spec get_entity_name(stream_name :: t()) :: String.t()
   def get_entity_name(stream_name) do
     stream_name
     |> get_category()

@@ -2,10 +2,11 @@ defmodule Rill.MessageStore.Reader do
   use Rill.Kernel
   alias Rill.MessageStore
   alias Rill.Session
+  alias Rill.MessageStore.StreamName
 
   @spec handle(
           session :: Session.t(),
-          stream_name :: String.t(),
+          stream_name :: StreamName.t(),
           handler :: module(),
           times :: pos_integer(),
           opts :: [MessageStore.read_option()]

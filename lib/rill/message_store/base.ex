@@ -5,10 +5,11 @@ defmodule Rill.MessageStore.Base do
   alias Rill.MessageStore.StreamName
   alias Rill.MessageStore.ExpectedVersion
   alias Rill.Session
+  alias Rill.MessageStore.StreamName
 
   @spec read(
           session :: Session.t(),
-          stream_name :: String.t(),
+          stream_name :: StreamName.t(),
           opts :: [Rill.MessageStore.read_option()],
           fun :: nil | (%Read{}, term() -> term())
         ) :: Enumerable.t() | term()
@@ -53,7 +54,7 @@ defmodule Rill.MessageStore.Base do
   @spec write(
           session :: Session.t(),
           messages :: struct() | [struct()],
-          stream_name :: String.t(),
+          stream_name :: StreamName.t(),
           opts :: [Rill.MessageStore.write_option()]
         ) :: non_neg_integer()
   def write(session, message, stream_name)
@@ -115,7 +116,7 @@ defmodule Rill.MessageStore.Base do
   @spec write_initial(
           session :: Session.t(),
           message :: struct(),
-          stream_name :: String.t()
+          stream_name :: StreamName.t()
         ) :: non_neg_integer()
   def write_initial(session, message, stream_name)
       when not is_list(message) do
@@ -124,7 +125,7 @@ defmodule Rill.MessageStore.Base do
 
   @spec get_next_position(
           message_data :: %Read{} | nil,
-          stream_name :: String.t()
+          stream_name :: StreamName.t()
         ) :: non_neg_integer() | :end_stream
   defp get_next_position(nil, _stream_name), do: :end_stream
 
