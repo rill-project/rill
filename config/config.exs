@@ -30,9 +30,7 @@ use Mix.Config
 #     import_config "#{Mix.env()}.exs"
 
 config :rill,
-  json: [encode: &Jason.encode!/2, decode: &Jason.decode!/2],
-  message_store: nil,
-  database: nil
+  json: [encode: &Jason.encode!/2, decode: &Jason.decode!/2]
 
 import_config "./environment/#{Mix.env()}.exs"
 
