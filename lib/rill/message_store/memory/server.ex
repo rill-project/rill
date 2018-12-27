@@ -76,7 +76,7 @@ defmodule Rill.MessageStore.Memory.Server do
   defp set_msg_properties(msg, stream_name, state) do
     new_msg =
       msg
-      |> Map.put(:id, Ecto.UUID.generate())
+      |> Map.put(:id, Rill.Identifier.UUID.Random.get())
       |> Map.put(:global_position, length(state) + 1)
       |> Map.put(:position, count_messages_for_stream_name(stream_name, state))
       |> Map.put(:stream_name, stream_name)

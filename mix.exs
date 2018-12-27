@@ -40,12 +40,12 @@ defmodule Rill.MixProject do
   def deps do
     [
       {:dialyxir, ">= 1.0.0-rc.3", only: [:dev], runtime: false},
-      {:ecto, ">= 3.0.0"},
-      {:ecto_sql, ">= 3.0.0"},
-      {:postgrex, ">= 0.14.0"},
       {:jason, ">= 1.1.0"},
       {:ex2ms, ">= 1.5.0"},
-      {:recase, ">= 0.3.0"}
+      {:recase, ">= 0.3.0"},
+      {:uuid, ">= 1.1.8"},
+      {:decimal, ">= 1.6.0"},
+      {:scribble, ">= 0.1.6"}
     ]
   end
 
