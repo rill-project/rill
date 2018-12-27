@@ -9,6 +9,7 @@ defmodule Rill.MixProject do
       app: :rill,
       version: @version,
       elixir: "~> 1.7",
+      package: package(),
       deps: deps(),
       aliases: aliases(),
       elixirc_paths: elixirc_paths(Mix.env()),
@@ -25,7 +26,12 @@ defmodule Rill.MixProject do
           :race_conditions
         ],
         paths: ["_build/#{Mix.env()}/lib/rill/consolidated"]
-      ]
+      ],
+      # Docs
+      name: "Rill",
+      source_url: "https://github.com/rill-project/rill",
+      homepage_url: "https://github.com/rill-project/rill",
+      docs: docs()
     ]
   end
 
@@ -36,16 +42,45 @@ defmodule Rill.MixProject do
     ]
   end
 
+  def package do
+    [
+      maintainers: ["Francesco Belladonna"],
+      description: "Event-sourced microservices framework",
+      licenses: ["MIT"],
+      links: %{"GitHub" => "https://github.com/rill-project/rill"},
+      files: [
+        ".formatter.exs",
+        "mix.exs",
+        "README.md",
+        "VERSION",
+        "test",
+        "lib",
+        "config/config.exs",
+        "config/environment/dev.exs",
+        "config/environment/prod.exs",
+        "config/environment/test.exs"
+      ]
+    ]
+  end
+
+  def docs do
+    [
+      main: "README.md",
+      extras: ["README.md": [filename: "README.md", title: "Rill"]]
+    ]
+  end
+
   # Run "mix help deps" to learn about dependencies.
   def deps do
     [
       {:dialyxir, ">= 1.0.0-rc.3", only: [:dev], runtime: false},
-      {:ecto, ">= 3.0.0"},
-      {:ecto_sql, ">= 3.0.0"},
-      {:postgrex, ">= 0.14.0"},
+      {:ex_doc, ">= 0.19.2", only: [:dev]},
       {:jason, ">= 1.1.0"},
       {:ex2ms, ">= 1.5.0"},
-      {:recase, ">= 0.3.0"}
+      {:recase, ">= 0.3.0"},
+      {:uuid, ">= 1.1.8"},
+      {:decimal, ">= 1.6.0"},
+      {:scribble, ">= 0.1.6"}
     ]
   end
 

@@ -1,4 +1,5 @@
 defmodule Rill.MessageStore.MessageData.Transform.Map.JSON do
+  use Rill.Kernel
   alias Rill.Casing
 
   @spec write(data :: map()) :: String.t()
@@ -27,8 +28,7 @@ defmodule Rill.MessageStore.MessageData.Transform.Map.JSON do
 
   def json_encode!(text, opts \\ []) do
     fun =
-      :rill
-      |> Application.get_env(:json)
+      Config.get(:json, [])
       |> Keyword.fetch!(:encode)
 
     fun.(text, opts)
@@ -36,8 +36,7 @@ defmodule Rill.MessageStore.MessageData.Transform.Map.JSON do
 
   def json_decode!(text, opts \\ []) do
     fun =
-      :rill
-      |> Application.get_env(:json)
+      Config.get(:json, [])
       |> Keyword.fetch!(:decode)
 
     fun.(text, opts)
