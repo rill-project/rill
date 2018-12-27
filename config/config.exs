@@ -29,9 +29,6 @@ use Mix.Config
 #
 #     import_config "#{Mix.env()}.exs"
 
-config :rill,
-  json: [encode: &Jason.encode!/2, decode: &Jason.decode!/2]
-
 import_config "./environment/#{Mix.env()}.exs"
 
 if File.exists?(Path.expand("./environment/#{Mix.env()}.secret.exs", __DIR__)) do

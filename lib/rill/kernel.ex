@@ -3,6 +3,7 @@ defmodule Rill.Kernel do
     quote do
       require Scribble
       alias Scribble, as: Log
+      alias Rill.Config
     end
   end
 end
