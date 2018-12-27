@@ -9,6 +9,7 @@ defmodule Rill.MixProject do
       app: :rill,
       version: @version,
       elixir: "~> 1.7",
+      package: package(),
       deps: deps(),
       aliases: aliases(),
       elixirc_paths: elixirc_paths(Mix.env()),
@@ -25,7 +26,12 @@ defmodule Rill.MixProject do
           :race_conditions
         ],
         paths: ["_build/#{Mix.env()}/lib/rill/consolidated"]
-      ]
+      ],
+      # Docs
+      name: "Rill",
+      source_url: "https://github.com/rill-project/rill",
+      homepage_url: "https://github.com/rill-project/rill",
+      docs: docs()
     ]
   end
 
@@ -33,6 +39,34 @@ defmodule Rill.MixProject do
   def application do
     [
       extra_applications: [:logger]
+    ]
+  end
+
+  def package do
+    [
+      maintainers: ["Francesco Belladonna"],
+      description: "Event-sourced microservices framework",
+      licenses: ["MIT"],
+      links: %{"GitHub" => "https://github.com/rill-project/rill"},
+      files: [
+        ".formatter.exs",
+        "mix.exs",
+        "README.md",
+        "VERSION",
+        "test",
+        "lib",
+        "config/config.exs",
+        "config/environment/dev.exs",
+        "config/environment/prod.exs",
+        "config/environment/test.exs"
+      ]
+    ]
+  end
+
+  def docs do
+    [
+      main: "README.md",
+      extras: ["README.md": [filename: "README.md", title: "Rill"]]
     ]
   end
 
