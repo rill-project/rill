@@ -4,6 +4,8 @@ defmodule Rill.MessageStore.Reader do
   alias Rill.Session
   alias Rill.MessageStore.StreamName
 
+  @scribble tag: :message_store_reader
+
   @spec handle(
           session :: Session.t(),
           stream_name :: StreamName.t(),
@@ -21,11 +23,11 @@ defmodule Rill.MessageStore.Reader do
     do: handle(session, stream_name, handler, times, [])
 
   def handle(%Session{} = session, stream_name, handler, times, opts) do
-    Log.trace(fn ->
+    Log.trace tag: :read_handle do
       "Handling (Stream Name: #{stream_name}, Handler: #{handler}, Times: #{
         times
       })"
-    end)
+    end
 
     repeat_times = Range.new(1, times)
 
@@ -35,11 +37,11 @@ defmodule Rill.MessageStore.Reader do
       |> Enum.each(fn message -> handler.handle(session, message) end)
     end)
 
-    Log.info(fn ->
+    Log.info tag: :read_handle do
       "Handled (Stream Name: #{stream_name}, Handler: #{handler}, Times: #{
         times
       })"
-    end)
+    end
 
     session
   end

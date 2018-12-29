@@ -5,6 +5,8 @@ defmodule Rill.Messaging.Handler do
   alias Rill.Messaging.Message.Dictionary
   alias Rill.Logger.Text, as: LogText
 
+  @scribble tag: :handle
+
   @callback handle(message :: struct(), session :: Session.t()) :: no_return()
   @optional_callbacks handle: 2
 
@@ -33,9 +35,9 @@ defmodule Rill.Messaging.Handler do
     msg = Dictionary.translate(dictionary, message_data)
     Log.trace(fn -> "Handling (#{LogText.message_data(message_data)})" end)
 
-    Log.trace(fn ->
-      {inspect(message_data, pretty: true), tags: [:data, :message]}
-    end)
+    Log.trace tags: [:data, :message] do
+      inspect(message_data, pretty: true)
+    end
 
     handled_result =
       if is_nil(msg) do

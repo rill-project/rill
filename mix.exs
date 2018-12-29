@@ -80,7 +80,7 @@ defmodule Rill.MixProject do
       {:recase, ">= 0.3.0"},
       {:uuid, ">= 1.1.8"},
       {:decimal, ">= 1.6.0"},
-      {:scribble, ">= 0.1.6"}
+      {:scribble, ">= 0.2.0"}
     ]
   end
 

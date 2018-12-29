@@ -7,6 +7,8 @@ defmodule Rill.MessageStore.Base do
   alias Rill.Session
   alias Rill.MessageStore.StreamName
 
+  @scribble tag: :message_store
+
   @spec read(
           session :: Session.t(),
           stream_name :: StreamName.t(),
@@ -14,9 +16,9 @@ defmodule Rill.MessageStore.Base do
           fun :: nil | (%Read{}, term() -> term())
         ) :: Enumerable.t() | term()
   def read(session, stream_name, opts \\ [], fun \\ nil) do
-    Log.trace(fn ->
-      {"Reading (Stream Name: #{stream_name})", tags: [:read]}
-    end)
+    Log.trace tag: :read do
+      "Reading (Stream Name: #{stream_name})"
+    end
 
     database = session.database
     start_position = Keyword.get(opts, :position)
@@ -44,9 +46,9 @@ defmodule Rill.MessageStore.Base do
         do: stream,
         else: Enum.reduce(stream, nil, fun)
 
-    Log.info(fn ->
-      {"Read completed (Stream Name: #{stream_name})", tags: [:read]}
-    end)
+    Log.info tag: :read do
+      "Read completed (Stream Name: #{stream_name})"
+    end
 
     output
   end
@@ -73,13 +75,13 @@ defmodule Rill.MessageStore.Base do
 
   def write(session, messages, stream_name, opts)
       when is_list(messages) do
-    Log.trace(fn ->
-      {"Writing (Stream Name: #{stream_name})", tags: [:write]}
-    end)
+    Log.trace tag: :write do
+      "Writing (Stream Name: #{stream_name})"
+    end
 
-    Log.trace(fn ->
-      {inspect(messages, pretty: true), tags: [:write, :data]}
-    end)
+    Log.trace tags: [:write, :data] do
+      inspect(messages, pretty: true)
+    end
 
     database = session.database
 
@@ -105,10 +107,9 @@ defmodule Rill.MessageStore.Base do
         )
       end)
 
-    Log.info(fn ->
-      {"Write Completed (Stream Name: #{stream_name}, Position: #{position})",
-       tags: [:write]}
-    end)
+    Log.info tag: :write do
+      "Write Completed (Stream Name: #{stream_name}, Position: #{position})"
+    end
 
     position
   end

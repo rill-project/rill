@@ -5,6 +5,8 @@ defmodule Rill.EntityStore do
   alias Rill.EntityProjection
   alias Rill.Session
 
+  @scribble tag: :entity_store
+
   @includes [:id, :version]
 
   @doc """
@@ -33,12 +35,12 @@ defmodule Rill.EntityStore do
           opts :: get_option()
         ) :: any() | list()
   def get(%Session{} = session, category, projection, entity, id, opts \\ []) do
-    Log.trace(fn ->
+    Log.trace tag: :get do
       id = inspect(id)
       projection = inspect(projection)
 
-      {"Getting entity (ID: #{id}, Projection: #{projection})", tags: [:get]}
-    end)
+      "Getting entity (ID: #{id}, Projection: #{projection})"
+    end
 
     include =
       opts
@@ -69,19 +71,19 @@ defmodule Rill.EntityStore do
         do: nil,
         else: info.entity
 
-    Log.info(fn ->
+    Log.info tag: :get do
       id = inspect(id)
       version = inspect(info.version)
       projection = inspect(projection)
 
-      {"Get entity done (ID: #{id}, Version: #{version}, Projection: #{
-         projection
-       })", tags: [:get]}
-    end)
+      "Get entity done (ID: #{id}, Version: #{version}, Projection: #{
+        projection
+      })"
+    end
 
-    Log.info(fn ->
-      {inspect(entity_info, pretty: true), tags: [:data, :entity]}
-    end)
+    Log.info tags: [:data, :entity] do
+      inspect(entity_info, pretty: true)
+    end
 
     include
     |> Enum.reduce([entity_info], fn field, fields ->
@@ -103,25 +105,24 @@ defmodule Rill.EntityStore do
           opts :: get_option()
         ) :: any() | list()
   def fetch(%Session{} = session, category, projection, entity, id, opts \\ []) do
-    Log.trace(fn ->
+    Log.trace tag: :fetch do
       id = inspect(id)
       projection = inspect(projection)
 
-      {"Fetching entity (ID: #{id}, Projection: #{projection})", tags: [:fetch]}
-    end)
+      "Fetching entity (ID: #{id}, Projection: #{projection})"
+    end
 
     results = get(session, category, projection, entity, id, opts)
 
     {entity_info, args} = List.pop_at(results, 0)
     entity_info = entity_info || entity
 
-    Log.info(fn ->
+    Log.info tag: :fetch do
       id = inspect(id)
       projection = inspect(projection)
 
-      {"Fetch entity done (ID: #{id}, Projection: #{projection})",
-       tags: [:fetch]}
-    end)
+      "Fetch entity done (ID: #{id}, Projection: #{projection})"
+    end
 
     [entity_info | args]
   end

@@ -22,6 +22,8 @@ defmodule Rill.Consumer do
   alias Rill.Messaging.Handler
   alias Rill.Logger.Text, as: LogText
 
+  @scribble tag: :consumer
+
   @type t :: %__MODULE__{
           position: pos_integer(),
           timer_ref: nil | term(),
@@ -37,16 +39,15 @@ defmodule Rill.Consumer do
 
   @spec dispatch(state :: t(), pid :: pid()) :: t()
   def dispatch(%__MODULE__{messages: []} = state, pid) do
-    Log.trace(fn ->
-      {"Consumer cleared batch, fetching new messages (PID: #{inspect(pid)})",
-       tags: [:dispatch]}
-    end)
+    Log.trace tags: [:dispatch] do
+      "Consumer cleared batch, fetching new messages (PID: #{inspect(pid)})"
+    end
 
     GenServer.cast(pid, :fetch)
 
-    Log.info(fn ->
-      {"Consumer fetched new batch (PID: #{inspect(pid)})", tags: [:dispatch]}
-    end)
+    Log.info tags: [:dispatch] do
+      "Consumer fetched new batch (PID: #{inspect(pid)})"
+    end
 
     state
   end
@@ -59,16 +60,15 @@ defmodule Rill.Consumer do
     handlers = state.handlers
     [message_data | new_messages_data] = messages_data
 
-    Log.trace(fn ->
+    Log.trace tags: [:dispatch] do
       stream_info = LogText.message_data(message_data)
 
-      {"Consumer dispatching (PID: #{inspect(pid)}, #{stream_info})",
-       tags: [:dispatch]}
-    end)
+      "Consumer dispatching (PID: #{inspect(pid)}, #{stream_info})"
+    end
 
-    Log.trace(fn ->
-      {inspect(message_data, pretty: true), tags: [:data, :dispatch]}
-    end)
+    Log.trace tags: [:data, :dispatch] do
+      inspect(message_data, pretty: true)
+    end
 
     Enum.each(handlers, fn handler ->
       Handler.handle(session, handler, message_data)
@@ -76,12 +76,11 @@ defmodule Rill.Consumer do
 
     GenServer.cast(pid, :dispatch)
 
-    Log.info(fn ->
+    Log.info tags: [:dispatch] do
       stream_info = LogText.message_data(message_data)
 
-      {"Consumer dispatching (PID: #{inspect(pid)}, #{stream_info})",
-       tags: [:dispatch]}
-    end)
+      "Consumer dispatching (PID: #{inspect(pid)}, #{stream_info})"
+    end
 
     state
     |> Map.put(:position, message_data.global_position + 1)
@@ -90,18 +89,18 @@ defmodule Rill.Consumer do
 
   @spec listen(state :: t(), pid :: pid()) :: t()
   def listen(%__MODULE__{} = state, pid) do
-    Log.trace(fn ->
-      {"Consumer start listening (PID: #{inspect(pid)})", tags: [:dispatch]}
-    end)
+    Log.trace tags: [:dispatch] do
+      "Consumer start listening (PID: #{inspect(pid)})"
+    end
 
     interval = state.poll_interval_milliseconds
     {:ok, ref} = :timer.send_interval(interval, pid, :reminder)
 
     GenServer.cast(pid, :fetch)
 
-    Log.info(fn ->
-      {"Consumer listening (PID: #{inspect(pid)})", tags: [:dispatch]}
-    end)
+    Log.info tags: [:dispatch] do
+      "Consumer listening (PID: #{inspect(pid)})"
+    end
 
     Map.put(state, :timer_ref, ref)
   end
@@ -118,9 +117,9 @@ defmodule Rill.Consumer do
   def fetch(%__MODULE__{messages: [_ | _]} = state, _pid), do: state
 
   def fetch(%__MODULE__{messages: []} = state, pid) do
-    Log.trace(fn ->
-      {"Consumer fetching messages (PID: #{inspect(pid)})", tags: [:fetch]}
-    end)
+    Log.trace tags: [:fetch] do
+      "Consumer fetching messages (PID: #{inspect(pid)})"
+    end
 
     session = state.session
 
@@ -140,9 +139,9 @@ defmodule Rill.Consumer do
           Map.put(state, :messages, new_messages)
       end
 
-    Log.info(fn ->
-      {"Consumer fetched messages (PID: #{inspect(pid)})", tags: [:fetch]}
-    end)
+    Log.info tags: [:fetch] do
+      "Consumer fetched messages (PID: #{inspect(pid)})"
+    end
 
     fetched
   end

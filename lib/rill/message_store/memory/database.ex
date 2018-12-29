@@ -13,28 +13,30 @@ defmodule Rill.MessageStore.Memory.Database do
   alias Rill.MessageStore.MessageData.Write
   alias Rill.MessageStore.ExpectedVersion
 
+  @scribble tag: :message_store
+
   @impl Rill.MessageStore.Database
   def get(%Session{} = session, stream_name, opts)
       when is_binary(stream_name) and is_list(opts) do
-    Log.trace(fn ->
-      {"Getting (Stream Name: #{stream_name})", tags: [:get]}
-    end)
+    Log.trace tag: :get do
+      "Getting (Stream Name: #{stream_name})"
+    end
 
     messages = server_call(session, {:get, stream_name, opts})
 
-    Log.debug(fn ->
+    Log.debug tag: :get do
       count = length(messages)
       position = Keyword.get(opts, :position)
       batch_size = Keyword.get(opts, :batch_size)
 
-      {"Finished Getting Messages (Stream Name: #{stream_name}, Count: #{count}, Position: #{
-         inspect(position)
-       }, Batch Size: #{inspect(batch_size)})", tags: [:get]}
-    end)
+      "Finished Getting Messages (Stream Name: #{stream_name}, Count: #{count}, Position: #{
+        inspect(position)
+      }, Batch Size: #{inspect(batch_size)})"
+    end
 
-    Log.info(fn ->
-      {"Get Completed (Stream Name: #{stream_name})", tags: [:get]}
-    end)
+    Log.info tag: :get do
+      "Get Completed (Stream Name: #{stream_name})"
+    end
 
     messages
   end
@@ -42,20 +44,19 @@ defmodule Rill.MessageStore.Memory.Database do
   @impl Rill.MessageStore.Database
   def get_last(%Session{} = session, stream_name)
       when is_binary(stream_name) do
-    Log.trace(fn ->
-      {"Getting Last (Stream Name: #{stream_name})", tags: [:get, :get_last]}
-    end)
+    Log.trace tags: [:get, :get_last] do
+      "Getting Last (Stream Name: #{stream_name})"
+    end
 
     last_message = server_call(session, {:get_last, stream_name})
 
-    Log.debug(fn ->
-      {inspect(last_message, pretty: true), tags: [:get, :get_last, :data]}
-    end)
+    Log.debug tags: [:get, :get_last, :data] do
+      inspect(last_message, pretty: true)
+    end
 
-    Log.info(fn ->
-      {"Get Last Completed (Stream Name: #{stream_name})",
-       tags: [:get, :get_last]}
-    end)
+    Log.info tags: [:get, :get_last] do
+      "Get Last Completed (Stream Name: #{stream_name})"
+    end
 
     last_message
   end
@@ -63,24 +64,26 @@ defmodule Rill.MessageStore.Memory.Database do
   @impl Rill.MessageStore.Database
   def put(%Session{} = session, %Write{} = msg, stream_name, opts)
       when is_binary(stream_name) and is_list(opts) do
-    Log.trace(fn ->
+    Log.trace tag: :put do
       expected_version =
         opts
         |> Keyword.get(:expected_version)
         |> ExpectedVersion.canonize()
 
-      {"Putting (Stream Name: #{stream_name}, Expected Version: #{
-         inspect(expected_version)
-       })", tags: [:put]}
-    end)
+      "Putting (Stream Name: #{stream_name}, Expected Version: #{
+        inspect(expected_version)
+      })"
+    end
 
-    Log.debug(fn -> {inspect(msg, pretty: true), tags: [:put, :data]} end)
+    Log.debug tags: [:put, :data] do
+      inspect(msg, pretty: true)
+    end
+
     position = server_call(session, {:put, msg, stream_name, opts})
 
-    Log.info(fn ->
-      {"Put Completed (Stream Name: #{stream_name}, Position: #{position})",
-       tags: [:put]}
-    end)
+    Log.info tag: :put do
+      "Put Completed (Stream Name: #{stream_name}, Position: #{position})"
+    end
 
     position
   end

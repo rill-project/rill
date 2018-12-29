@@ -5,6 +5,8 @@ defmodule Rill.EntityProjection do
   alias Rill.MessageStore.MessageData.Read
   alias Rill.Messaging.Message.Dictionary
 
+  @scribble tag: :consumer
+
   @callback apply(message :: struct(), entity :: term()) :: term()
   @optional_callbacks apply: 2
 
@@ -30,15 +32,15 @@ defmodule Rill.EntityProjection do
         %Dictionary{} = dictionary,
         %Read{} = message_data
       ) do
-    Log.trace(fn ->
-      {"Applying event (Type: #{message_data.type})", tags: [:apply]}
-    end)
+    Log.trace tag: :apply do
+      "Applying event (Type: #{message_data.type})"
+    end
 
     msg = Dictionary.translate(dictionary, message_data)
 
-    Log.trace(fn ->
-      {inspect(msg, pretty: true), tags: [:data, :message]}
-    end)
+    Log.trace tags: [:data, :message] do
+      inspect(msg, pretty: true)
+    end
 
     new_entity =
       if is_nil(msg) do
@@ -47,11 +49,13 @@ defmodule Rill.EntityProjection do
         projection.apply(msg, entity)
       end
 
-    Log.info(fn ->
-      {"Applied event (Type: #{message_data.type})", tags: [:apply]}
-    end)
+    Log.info tag: :apply do
+      "Applied event (Type: #{message_data.type})"
+    end
 
-    Log.trace(fn -> {inspect(msg, pretty: true), tags: [:data, :message]} end)
+    Log.trace tags: [:data, :message] do
+      inspect(msg, pretty: true)
+    end
 
     new_entity
   end
