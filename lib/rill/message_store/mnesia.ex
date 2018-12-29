@@ -4,18 +4,18 @@ defmodule Rill.MessageStore.Mnesia do
   alias Rill.Session
   alias Rill.MessageStore.StreamName
   alias Rill.MessageStore.ExpectedVersion
-  alias :mnesia, as: Mnesia
   alias Rill.MessageStore.Mnesia.Repo
 
-  @spec start(namespace :: atom()) :: no_return()
-  def start(namespace) do
-    Mnesia.start()
-    Repo.create(namespace)
+  @spec start() :: no_return()
+  def start do
+    Repo.start()
+    Repo.create()
   end
 
-  @spec stop(namespace :: atom()) :: no_return()
-  def stop(namespace) do
-    Repo.delete(namespace)
+  @spec truncate(session :: Session.t()) :: no_return()
+  def truncate(session) do
+    namespace = Session.get_config(session, :namespace)
+    Repo.truncate(namespace)
   end
 
   @type transaction_retries_option :: {:transaction_retries, pos_integer()}
@@ -34,7 +34,7 @@ defmodule Rill.MessageStore.Mnesia do
     opts = Keyword.delete(opts, :transaction_retries)
 
     result =
-      Mnesia.transaction(
+      Repo.transaction(
         fn ->
           Rill.MessageStore.Base.write(
             session,
