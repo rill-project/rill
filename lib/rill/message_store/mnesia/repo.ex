@@ -7,16 +7,22 @@ defmodule Rill.MessageStore.Mnesia.Repo do
   alias Rill.MessageStore.Mnesia.TableName
   require Ex2ms
 
-  @type namespace :: atom()
+  @table Rill.Message
+  @table_position Rill.Message.Position
+  @table_global Rill.Message.Global
+
+  @type namespace :: String.t()
   @type read_message :: list()
   @type write_message :: list()
   @type read_messages :: {[read_message()], term()} | term()
 
   @message_attrs [
+    :namespace_global,
+    :namespace,
     :global_position,
-    # category, id, global, local
+    # namespace, category, id, global, local
     :stream_all,
-    # category, id, local
+    # namespace, category, id, local
     :stream_local,
     :id,
     :stream_name,
@@ -33,43 +39,37 @@ defmodule Rill.MessageStore.Mnesia.Repo do
                               attr == :stream_local
                             end) + 2
 
-  def create(ns) do
+  defdelegate start, to: Mnesia
+  defdelegate transaction(fun, retries), to: Mnesia
+
+  def create do
     with {:atomic, _} <-
            Mnesia.create_table(
-             TableName.table(ns),
+             @table,
              attributes: @message_attrs,
              index: [:id, :stream_all, :stream_local],
              type: :ordered_set
            ),
          {:atomic, _} <-
            Mnesia.create_table(
-             TableName.position(ns),
-             attributes: [:stream, :position]
+             @table_position,
+             attributes: [:namespace_stream, :stream, :position]
            ),
          {:atomic, _} <-
            Mnesia.create_table(
-             TableName.global(ns),
-             attributes: [:key, :value]
-           ),
-         {:atomic, _} <-
-           Mnesia.transaction(fn ->
-             :ok =
-               Mnesia.write({
-                 TableName.global(ns),
-                 :global_position,
-                 0
-               })
-           end) do
+             @table_global,
+             attributes: [:namespace, :value]
+           ) do
       :ok
     else
       error -> error
     end
   end
 
-  def delete(ns) do
-    Mnesia.delete_table(TableName.table(ns))
-    Mnesia.delete_table(TableName.position(ns))
-    Mnesia.delete_table(TableName.global(ns))
+  def delete do
+    Mnesia.delete_table(@table)
+    Mnesia.delete_table(@table_position)
+    Mnesia.delete_table(@table_global)
     :ok
   end
 
@@ -82,9 +82,9 @@ defmodule Rill.MessageStore.Mnesia.Repo do
         expected_version
       ]) do
     Mnesia.transaction(fn ->
-      Mnesia.write_lock_table(TableName.table(ns))
-      Mnesia.write_lock_table(TableName.position(ns))
-      Mnesia.write_lock_table(TableName.global(ns))
+      Mnesia.write_lock_table(@table)
+      Mnesia.write_lock_table(@table_position)
+      Mnesia.write_lock_table(@table_global)
       {:atomic, version} = stream_version(ns, stream_name)
       {:atomic, global} = new_global_position(ns)
       {:atomic, local} = new_local_position(ns, stream_name)
@@ -101,10 +101,12 @@ defmodule Rill.MessageStore.Mnesia.Repo do
 
           :ok =
             Mnesia.write({
-              TableName.table(ns),
+              @table,
+              {ns, global},
+              ns,
               global,
-              {stream_category, stream_id, global, local},
-              {stream_category, stream_id, local},
+              {ns, stream_category, stream_id, global, local},
+              {ns, stream_category, stream_id, local},
               id,
               stream_name,
               stream_category,
@@ -132,10 +134,10 @@ defmodule Rill.MessageStore.Mnesia.Repo do
 
   def stream_version(ns, stream_name) do
     Mnesia.transaction(fn ->
-      target = to_stream(stream_name)
+      target = to_stream(ns, stream_name)
 
-      case wget({TableName.position(ns), target}) do
-        {_, _, current_pos} -> current_pos
+      case wget({@table_position, target}) do
+        {_, _, _, current_pos} -> current_pos
         nil -> nil
       end
     end)
@@ -153,17 +155,17 @@ defmodule Rill.MessageStore.Mnesia.Repo do
 
     spec =
       Ex2ms.fun do
-        {_table, _global, {stream_category, _p_stream_id, global, _p_local},
-         _stream_local, _id, _stream_name, _stream_category, _stream_id, _type,
-         _local, _data, _metadata, _time} = record
-        when stream_category == ^category_name and global >= ^global_pos ->
+        {_table, _ns_global, _ns, _global,
+         {ns, stream_category, _p_stream_id, global, _p_local}, _stream_local,
+         _id, _stream_name, _stream_category, _stream_id, _type, _local, _data,
+         _metadata, _time} = record
+        when ns == ^ns and stream_category == ^category_name and
+               global >= ^global_pos ->
           record
       end
 
     Mnesia.transaction(fn ->
-      table = TableName.table(ns)
-
-      case Mnesia.select(table, spec, batch_size, :read) do
+      case Mnesia.select(@table, spec, batch_size, :read) do
         {records, cont} -> {Enum.map(records, &decode/1), cont}
         :"$end_of_table" -> {[], :"$end_of_table"}
         error -> error
@@ -184,18 +186,17 @@ defmodule Rill.MessageStore.Mnesia.Repo do
 
     spec =
       Ex2ms.fun do
-        {_table, _global, {stream_category, stream_id, _p_global, local},
-         _stream_local, _id, _stream_name, _stream_category, _stream_id, _type,
-         _local, _data, _metadata, _time} = record
-        when stream_category == ^category and stream_id == ^id and
+        {_table, _ns_global, _ns, _global,
+         {ns, stream_category, stream_id, _p_global, local}, _stream_local, _id,
+         _stream_name, _stream_category, _stream_id, _type, _local, _data,
+         _metadata, _time} = record
+        when ns == ^ns and stream_category == ^category and stream_id == ^id and
                local >= ^local_pos ->
           record
       end
 
     Mnesia.transaction(fn ->
-      table = TableName.table(ns)
-
-      case Mnesia.select(table, spec, batch_size, :read) do
+      case Mnesia.select(@table, spec, batch_size, :read) do
         {records, cont} -> {Enum.map(records, &decode/1), cont}
         :"$end_of_table" -> {[], :"$end_of_table"}
         error -> error
@@ -211,18 +212,18 @@ defmodule Rill.MessageStore.Mnesia.Repo do
     Mnesia.transaction(fn ->
       id = StreamName.get_id(stream_name)
       category = StreamName.get_category(stream_name)
-      target = to_stream(stream_name)
+      target = to_stream(ns, stream_name)
 
       records =
-        case get({TableName.position(ns), target}) do
+        case get({@table_position, target}) do
           nil ->
             []
 
-          {_, _, pos} ->
-            stream_local = {category, id, pos}
+          {_, _, _, pos} ->
+            stream_local = {ns, category, id, pos}
 
             Mnesia.index_read(
-              TableName.table(ns),
+              @table,
               stream_local,
               @message_stream_local_idx
             )
@@ -243,27 +244,26 @@ defmodule Rill.MessageStore.Mnesia.Repo do
 
   defp new_local_position(ns, stream_name) do
     Mnesia.transaction(fn ->
-      target = to_stream(stream_name)
+      target = to_stream(ns, stream_name)
 
       current_pos =
-        case wget({TableName.position(ns), target}) do
+        case wget({@table_position, target}) do
           nil -> -1
-          {_, _, pos} -> pos
+          {_, _, _, pos} -> pos
         end
 
       new_pos = current_pos + 1
-      :ok = Mnesia.write({TableName.position(ns), target, new_pos})
+      :ok = Mnesia.write({@table_position, target, new_pos})
       new_pos
     end)
   end
 
   defp new_global_position(ns) do
     Mnesia.transaction(fn ->
-      global = TableName.global(ns)
-      {_, _, current_pos} = wget({global, :global_position})
+      {_, _, current_pos} = wget({@table_global, ns}, 0)
 
       new_pos = current_pos + 1
-      :ok = Mnesia.write({global, :global_position, new_pos})
+      :ok = Mnesia.write({@table_global, ns, new_pos})
       new_pos
     end)
   end
@@ -281,6 +281,8 @@ defmodule Rill.MessageStore.Mnesia.Repo do
 
   defp decode({
          _table,
+         _ns_global,
+         _ns,
          global_position,
          _stream_all,
          _stream_local,
@@ -297,9 +299,9 @@ defmodule Rill.MessageStore.Mnesia.Repo do
     [id, stream_name, type, position, global_position, data, metadata, time]
   end
 
-  defp to_stream(stream_name) do
+  defp to_stream(ns, stream_name) do
     id = StreamName.get_id(stream_name)
     category = StreamName.get_category(stream_name)
-    {category, id}
+    {ns, category, id}
   end
 end

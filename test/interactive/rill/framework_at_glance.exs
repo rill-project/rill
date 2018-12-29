@@ -37,10 +37,10 @@ end
 defmodule Run do
   def run do
     # {:ok, pid1} = Rill.MessageStore.Memory.start_link()
-    Rill.MessageStore.Mnesia.start(MemoryMnesia)
+    Rill.MessageStore.Mnesia.start()
 
     # session = Rill.MessageStore.Memory.Session.new(pid1)
-    session = Rill.MessageStore.Mnesia.Session.new(MemoryMnesia)
+    session = Rill.MessageStore.Mnesia.Session.new("MemoryMnesia")
 
     renamed = %Renamed{name: "Joe"}
     Rill.MessageStore.write(session, renamed, "person-123")
