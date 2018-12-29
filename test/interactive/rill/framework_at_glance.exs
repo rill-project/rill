@@ -44,7 +44,9 @@ defmodule Run do
     session2 = Rill.MessageStore.Mnesia.Session.new("MemoryMnesia2")
 
     renamed = %Renamed{name: "Joe"}
+    renamed2 = %Renamed{name: "John"}
     Rill.MessageStore.write(session, renamed, "person-123")
+    Rill.MessageStore.write(session, renamed2, "person-123")
     Rill.MessageStore.write(session2, renamed, "person-456")
 
     [person, version] = Store.fetch(session, "123", include: [:version])
@@ -68,6 +70,7 @@ defmodule Run do
     # IO.inspect will output `renamed` content
     IO.inspect(person, label: :person)
     IO.inspect(version, label: :version)
+    Rill.MessageStore.Mnesia.info(session)
     Rill.MessageStore.Mnesia.truncate(session)
 
     [empty_person, empty_version] =

@@ -128,6 +128,17 @@ defmodule Rill.MessageStore.Mnesia.Repo do
     result
   end
 
+  def info(ns) do
+    {:atomic, enumerator} =
+      Mnesia.transaction(fn ->
+        @table
+        |> Mnesia.index_read(ns, @message_namespace_idx)
+        |> Stream.map(&decode/1)
+      end)
+
+    enumerator
+  end
+
   def write_message(ns, [
         id,
         stream_name,
