@@ -20,6 +20,13 @@ end
 
 To use the in-memory MessageStore, `Rill.MessageStore.Memory.Server` needs to be started and `Session` needs to be configured with the server pid (or name).
 
+### Mnesia (memory)
+
+To use the Mnesia MessageStore, `Rill.MessageStore.Mnesia.start()` needs to be
+called once and `Session` needs to be configured with a namespace (any string
+works). Optionally the session can be initialized using `rand/0`, which returns
+a tuple with `{%Session{}, uuid}` (uuid is a `String`)
+
 ### Ecto.Postgres
 
 To use the Ecto.Postgres MessageStore, `ecto` and `ecto_sql`, packages are
@@ -63,6 +70,24 @@ end
 
 {:ok, pid} = Rill.MessageStore.Memory.Server.start_link()
 session = Rill.MessageStore.Memory.Session.new(pid)
+message = %Renamed{name: "foo"}
+
+Rill.MessageStore.write(session, message, "person")
+```
+
+### Mnesia (memory)
+
+```elixir
+defmodule Renamed do
+  use Rill, :message
+  defmessage([:name])
+end
+
+Rill.MessageStore.Mnesia.start()
+namespace = Rill.Identifier.UUID.Random.get()
+session = Rill.MessageStore.Mnesia.Session.new(namespace)
+# Alternatively:
+# session = Rill.MessageStore.Mnesia.Session.rand()
 message = %Renamed{name: "foo"}
 
 Rill.MessageStore.write(session, message, "person")
@@ -270,18 +295,33 @@ person.name # => "Joe"
 
 A `Rill.Session` is just a struct, but there are some utilities available.
 
-#### Postgres
-
-```elixir
-{:ok, _} = Repo.start_link([name: Repo])
-session = Rill.MessageStore.Ecto.Postgres.Session.new(repo)
-```
-
 #### Memory
 
 ```elixir
 {:ok, pid} = Rill.MessageStore.Memory.Server.start_link()
 session = Rill.MessageStore.Memory.Session.new(pid)
+```
+
+#### Mnesia (memory)
+
+```elixir
+Rill.MessageStore.Mnesia.start()
+namespace = Rill.Identifier.UUID.Random.get()
+session = Rill.MessageStore.Mnesia.Session.new(namespace)
+```
+
+Alternatively:
+
+```elixir
+Rill.MessageStore.Mnesia.start()
+session = Rill.MessageStore.Mnesia.Session.rand()
+```
+
+#### Postgres
+
+```elixir
+{:ok, _} = Repo.start_link([name: Repo])
+session = Rill.MessageStore.Ecto.Postgres.Session.new(repo)
 ```
 
 ### Define a Store

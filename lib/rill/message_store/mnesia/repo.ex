@@ -4,7 +4,6 @@ defmodule Rill.MessageStore.Mnesia.Repo do
   alias :mnesia, as: Mnesia
   alias Rill.MessageStore.StreamName
   alias Rill.MessageStore.ExpectedVersion.Error, as: ExpectedVersionError
-  alias Rill.MessageStore.Mnesia.TableName
   require Ex2ms
 
   @table Rill.Message
@@ -53,7 +52,8 @@ defmodule Rill.MessageStore.Mnesia.Repo do
          {:atomic, _} <-
            Mnesia.create_table(
              @table_position,
-             attributes: [:namespace_stream, :stream, :position]
+             # stream: {namespace, category, id}
+             attributes: [:stream, :position]
            ),
          {:atomic, _} <-
            Mnesia.create_table(
@@ -87,7 +87,7 @@ defmodule Rill.MessageStore.Mnesia.Repo do
       Mnesia.write_lock_table(@table_global)
       {:atomic, version} = stream_version(ns, stream_name)
       {:atomic, global} = new_global_position(ns)
-      {:atomic, local} = new_local_position(ns, stream_name)
+      {:atomic, local} = new_local_position(ns, stream_name) |> IO.inspect()
 
       case same_version?(version, expected_version) do
         false ->
@@ -137,7 +137,7 @@ defmodule Rill.MessageStore.Mnesia.Repo do
       target = to_stream(ns, stream_name)
 
       case wget({@table_position, target}) do
-        {_, _, _, current_pos} -> current_pos
+        {_, _, current_pos} -> current_pos
         nil -> nil
       end
     end)
@@ -219,7 +219,7 @@ defmodule Rill.MessageStore.Mnesia.Repo do
           nil ->
             []
 
-          {_, _, _, pos} ->
+          {_, _, pos} ->
             stream_local = {ns, category, id, pos}
 
             Mnesia.index_read(
@@ -249,7 +249,7 @@ defmodule Rill.MessageStore.Mnesia.Repo do
       current_pos =
         case wget({@table_position, target}) do
           nil -> -1
-          {_, _, _, pos} -> pos
+          {_, _, pos} -> pos
         end
 
       new_pos = current_pos + 1
@@ -260,7 +260,7 @@ defmodule Rill.MessageStore.Mnesia.Repo do
 
   defp new_global_position(ns) do
     Mnesia.transaction(fn ->
-      {_, _, current_pos} = wget({@table_global, ns}, 0)
+      {_, _, current_pos} = wget({@table_global, ns}, {nil, nil, 0})
 
       new_pos = current_pos + 1
       :ok = Mnesia.write({@table_global, ns, new_pos})
