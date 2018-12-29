@@ -41,9 +41,11 @@ defmodule Run do
 
     # session = Rill.MessageStore.Memory.Session.new(pid1)
     session = Rill.MessageStore.Mnesia.Session.new("MemoryMnesia")
+    session2 = Rill.MessageStore.Mnesia.Session.new("MemoryMnesia2")
 
     renamed = %Renamed{name: "Joe"}
     Rill.MessageStore.write(session, renamed, "person-123")
+    Rill.MessageStore.write(session2, renamed, "person-456")
 
     [person, version] = Store.fetch(session, "123", include: [:version])
 
@@ -66,6 +68,14 @@ defmodule Run do
     # IO.inspect will output `renamed` content
     IO.inspect(person, label: :person)
     IO.inspect(version, label: :version)
+    Rill.MessageStore.Mnesia.truncate(session)
+
+    [empty_person, empty_version] =
+      Store.fetch(session, "123", include: [:version])
+
+    [person2, version2] = Store.fetch(session2, "456", include: [:version])
+    IO.inspect({empty_person, empty_person}, label: :empty_person)
+    IO.inspect({person2, version2}, label: :person2)
   end
 end
 

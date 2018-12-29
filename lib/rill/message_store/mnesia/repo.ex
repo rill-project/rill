@@ -1,5 +1,6 @@
 defmodule Rill.MessageStore.Mnesia.Repo do
   @moduledoc false
+  use Rill.Kernel
 
   alias :mnesia, as: Mnesia
   alias Rill.MessageStore.StreamName
@@ -33,10 +34,19 @@ defmodule Rill.MessageStore.Mnesia.Repo do
     :metadata,
     :time
   ]
+  @position_attrs [:stream, :namespace, :position]
+  @global_attrs [:namespace, :value]
+
   # + 1 erlang is 1-based, + 1 first term is table name
   @message_stream_local_idx Enum.find_index(@message_attrs, fn attr ->
                               attr == :stream_local
                             end) + 2
+  @message_namespace_idx Enum.find_index(@message_attrs, fn attr ->
+                           attr == :namespace
+                         end) + 2
+  @position_namespace_idx Enum.find_index(@position_attrs, fn attr ->
+                            attr == :namespace
+                          end) + 2
 
   defdelegate start, to: Mnesia
   defdelegate transaction(fun, retries), to: Mnesia
@@ -46,19 +56,22 @@ defmodule Rill.MessageStore.Mnesia.Repo do
            Mnesia.create_table(
              @table,
              attributes: @message_attrs,
-             index: [:id, :stream_all, :stream_local],
+             index: [:id, :namespace, :stream_all, :stream_local],
              type: :ordered_set
            ),
          {:atomic, _} <-
            Mnesia.create_table(
              @table_position,
              # stream: {namespace, category, id}
-             attributes: [:stream, :position]
+             attributes: @position_attrs,
+             index: [:namespace],
+             type: :ordered_set
            ),
          {:atomic, _} <-
            Mnesia.create_table(
              @table_global,
-             attributes: [:namespace, :value]
+             attributes: @global_attrs,
+             type: :ordered_set
            ) do
       :ok
     else
@@ -71,6 +84,48 @@ defmodule Rill.MessageStore.Mnesia.Repo do
     Mnesia.delete_table(@table_position)
     Mnesia.delete_table(@table_global)
     :ok
+  end
+
+  def truncate(ns) do
+    Mnesia.transaction(fn ->
+      Mnesia.write_lock_table(@table)
+      Mnesia.write_lock_table(@table_position)
+      Mnesia.write_lock_table(@table_global)
+      truncate_table(ns, @table, @message_namespace_idx)
+      truncate_table(ns, @table_position, @position_namespace_idx)
+
+      Log.trace tag: :truncate do
+        "Truncating #{ns}/#{@table_global}"
+      end
+
+      result = Mnesia.delete({@table_global, ns})
+
+      Log.debug tag: :truncate do
+        "Truncated #{ns}/#{@table_global}: #{inspect(result)}"
+      end
+
+      result
+    end)
+  end
+
+  defp truncate_table(ns, table, idx) do
+    Log.trace tag: :truncate do
+      "Truncating #{ns}/#{table}/#{idx}"
+    end
+
+    records = Mnesia.index_read(table, ns, idx)
+
+    Log.debug tags: [:truncate, :data] do
+      inspect(records, pretty: true)
+    end
+
+    result = Enum.map(records, &Mnesia.delete_object/1)
+
+    Log.debug tags: [:truncate, :data] do
+      inspect(result, pretty: true)
+    end
+
+    result
   end
 
   def write_message(ns, [
@@ -87,7 +142,7 @@ defmodule Rill.MessageStore.Mnesia.Repo do
       Mnesia.write_lock_table(@table_global)
       {:atomic, version} = stream_version(ns, stream_name)
       {:atomic, global} = new_global_position(ns)
-      {:atomic, local} = new_local_position(ns, stream_name) |> IO.inspect()
+      {:atomic, local} = new_local_position(ns, stream_name)
 
       case same_version?(version, expected_version) do
         false ->
@@ -137,7 +192,7 @@ defmodule Rill.MessageStore.Mnesia.Repo do
       target = to_stream(ns, stream_name)
 
       case wget({@table_position, target}) do
-        {_, _, current_pos} -> current_pos
+        {_, _, _, current_pos} -> current_pos
         nil -> nil
       end
     end)
@@ -219,7 +274,7 @@ defmodule Rill.MessageStore.Mnesia.Repo do
           nil ->
             []
 
-          {_, _, pos} ->
+          {_, _, _, pos} ->
             stream_local = {ns, category, id, pos}
 
             Mnesia.index_read(
@@ -248,12 +303,15 @@ defmodule Rill.MessageStore.Mnesia.Repo do
 
       current_pos =
         case wget({@table_position, target}) do
-          nil -> -1
-          {_, _, pos} -> pos
+          nil ->
+            -1
+
+          {_, _, _, pos} ->
+            pos
         end
 
       new_pos = current_pos + 1
-      :ok = Mnesia.write({@table_position, target, new_pos})
+      :ok = Mnesia.write({@table_position, target, ns, new_pos})
       new_pos
     end)
   end

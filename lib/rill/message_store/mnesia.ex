@@ -12,6 +12,12 @@ defmodule Rill.MessageStore.Mnesia do
     Repo.create()
   end
 
+  @spec truncate(session :: Session.t()) :: no_return()
+  def truncate(session) do
+    namespace = Session.get_config(session, :namespace)
+    Repo.truncate(namespace)
+  end
+
   @type transaction_retries_option :: {:transaction_retries, pos_integer()}
   @spec write(
           session :: Session.t(),
