@@ -74,7 +74,7 @@ defmodule Run do
       Store.fetch(session, "123", include: [:version])
 
     [person2, version2] = Store.fetch(session2, "456", include: [:version])
-    IO.inspect({empty_person, empty_person}, label: :empty_person)
+    IO.inspect({empty_person, empty_version}, label: :empty_person)
     IO.inspect({person2, version2}, label: :person2)
   end
 end
