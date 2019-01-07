@@ -19,16 +19,14 @@ defmodule Rill.EntityProjectionTest do
     end
   end
 
-  alias Rill.MessageStore.MessageData.Read
   alias Rill.EntityProjection
 
   describe "with single event" do
     test "applies changes to entity" do
       person = %Person{name: "Joe"}
       renamed = %Renamed{name: "Ben"}
-      message_data = Read.build(renamed)
 
-      new_person = EntityProjection.apply(Projection, person, message_data)
+      new_person = EntityProjection.apply(Projection, person, renamed)
 
       assert new_person.name == "Ben"
     end

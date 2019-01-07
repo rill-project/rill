@@ -46,11 +46,7 @@ defmodule Rill.Messaging.Message do
       end
 
       def build(%Read{} = message_data) do
-        data = message_data.data
-        metadata = message_data.metadata
-
-        msg = unquote(__MODULE__).build(__MODULE__, data, metadata)
-        Map.put(msg, :id, message_data.id)
+        unquote(__MODULE__).build(__MODULE__, message_data)
       end
 
       @spec follow(preceding_message :: struct()) :: struct()
@@ -130,6 +126,16 @@ defmodule Rill.Messaging.Message do
         %{metadata: %Metadata{} = other_metadata}
       ) do
     Metadata.follows?(metadata, other_metadata)
+  end
+
+  @doc "Builds struct for `struct_name`"
+  @spec build(struct_name :: module(), message_data :: %Read{}) :: struct()
+  def build(struct_name, %Read{} = message_data) do
+    data = message_data.data
+    metadata = message_data.metadata
+
+    msg = build(struct_name, data, metadata)
+    Map.put(msg, :id, message_data.id)
   end
 
   @doc "Builds struct for `struct_name`"
