@@ -47,7 +47,7 @@ defmodule Rill.Messaging.Message.Dictionary do
   end
 
   @doc """
-  Provides `deftranslate` macro and sets up `dictionary` callback
+  Provides `def` macro and sets up `dictionary` callback
   """
   defmacro __using__(opts \\ []) do
     provide_dictionary = Keyword.get(opts, :provide_dictionary, true)
@@ -55,14 +55,16 @@ defmodule Rill.Messaging.Message.Dictionary do
     if provide_dictionary do
       quote do
         require unquote(__MODULE__)
-        import unquote(__MODULE__), only: [deftranslate: 2]
+        import Kernel, except: [def: 2]
+        import unquote(__MODULE__), only: [def: 2]
         @behaviour unquote(__MODULE__)
         @before_compile unquote(__MODULE__).Provider
       end
     else
       quote do
         require unquote(__MODULE__)
-        import unquote(__MODULE__), only: [deftranslate: 2]
+        import Kernel, except: [def: 2]
+        import unquote(__MODULE__), only: [def: 2]
         @behaviour unquote(__MODULE__)
       end
     end
@@ -82,7 +84,7 @@ defmodule Rill.Messaging.Message.Dictionary do
   defmodule Projection do
     alias Foo.Bar
 
-    deftranslate apply(%Bar{} = bar, entity) do
+    def apply(%Bar{} = bar, entity) do
       # ...
     end
   end
@@ -91,7 +93,7 @@ defmodule Rill.Messaging.Message.Dictionary do
   # %Projection{type_names: %{"Bar" => Foo.Bar}}
   ```
   """
-  defmacro deftranslate(head, do: body) do
+  defmacro def(head, do: body) do
     {_fun_name, _ctx, args} = head
     {:=, _, module_args} = List.first(args)
     {:%, _, module_match} = List.first(module_args)

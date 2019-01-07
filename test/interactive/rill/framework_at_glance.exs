@@ -4,14 +4,14 @@ end
 
 defmodule Renamed do
   use Rill, :message
-  defmessage([:name])
+  defstruct [:name]
 end
 
 defmodule Person.Projection do
   use Rill, :projection
 
   @impl Rill.EntityProjection
-  deftranslate apply(%Renamed{} = renamed, person) do
+  def apply(%Renamed{} = renamed, person) do
     Map.put(person, :name, renamed.name)
   end
 end
@@ -29,7 +29,7 @@ defmodule Handler do
   use Rill, :handler
 
   @impl Rill.Messaging.Handler
-  deftranslate handle(%Renamed{} = renamed, _session) do
+  def handle(%Renamed{} = renamed, _session) do
     IO.inspect(renamed, label: :renamed)
   end
 end

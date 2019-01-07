@@ -17,8 +17,8 @@ defmodule Rill.Messaging.Message do
   The attribute `:metadata` is automatically defined with default
   `%Rill.Messaging.Message.Metadata{}`
   """
-  @spec defmessage(attrs :: [atom()] | keyword()) :: any()
-  defmacro defmessage(attrs) when is_list(attrs) do
+  @spec defstruct(attrs :: [atom()] | keyword()) :: any()
+  defmacro defstruct(attrs) when is_list(attrs) do
     attrs =
       Enum.map(attrs, fn attr ->
         if is_tuple(attr), do: to_atom(attr), else: {to_atom(attr), nil}
@@ -71,13 +71,14 @@ defmodule Rill.Messaging.Message do
   end
 
   @doc """
-  Provides `defmessage/1` macro which allows creation of struct with required
+  Provides `defstruct/1` macro which allows creation of struct with required
   message keys (:id, :metadata)
   """
   defmacro __using__(_opts \\ []) do
     quote location: :keep do
       require unquote(__MODULE__)
-      import unquote(__MODULE__), only: [defmessage: 1]
+      import Kernel, except: [defstruct: 1]
+      import unquote(__MODULE__), only: [defstruct: 1]
     end
   end
 
