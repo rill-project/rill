@@ -117,7 +117,7 @@ defmodule Rill.Messaging.Message.Dictionary do
     Module.put_attribute(__CALLER__.module, :__rill_translate__, dictionary)
 
     quote do
-      def unquote(head) do
+      Kernel.def unquote(head) do
         unquote(body)
       end
     end
