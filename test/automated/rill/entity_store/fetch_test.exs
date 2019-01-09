@@ -24,7 +24,7 @@ defmodule Rill.EntityStore.FetchTest do
   end
 
   describe "with some events" do
-    test "returns entity projected with version 1" do
+    test "returns entity projected with version number" do
       {session, _} = Session.rand()
       msg = MessageData.SomeMessage.example()
       other_msg = MessageData.SomeOtherMessage.example()
