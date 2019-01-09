@@ -26,4 +26,4 @@ mix.lock
 .envrc
 .ruby-version
 .tool-versions
-/config/*.secret.exs
+/config/environment/*.secret.exs
