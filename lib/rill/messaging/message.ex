@@ -17,8 +17,8 @@ defmodule Rill.Messaging.Message do
   The attribute `:metadata` is automatically defined with default
   `%Rill.Messaging.Message.Metadata{}`
   """
-  @spec defmessage(attrs :: [atom()] | keyword()) :: any()
-  defmacro defmessage(attrs) when is_list(attrs) do
+  @spec defstruct(attrs :: [atom()] | keyword()) :: any()
+  defmacro defstruct(attrs) when is_list(attrs) do
     attrs =
       Enum.map(attrs, fn attr ->
         if is_tuple(attr), do: to_atom(attr), else: {to_atom(attr), nil}
@@ -46,11 +46,7 @@ defmodule Rill.Messaging.Message do
       end
 
       def build(%Read{} = message_data) do
-        data = message_data.data
-        metadata = message_data.metadata
-
-        msg = unquote(__MODULE__).build(__MODULE__, data, metadata)
-        Map.put(msg, :id, message_data.id)
+        unquote(__MODULE__).build(__MODULE__, message_data)
       end
 
       @spec follow(preceding_message :: struct()) :: struct()
@@ -75,13 +71,14 @@ defmodule Rill.Messaging.Message do
   end
 
   @doc """
-  Provides `defmessage/1` macro which allows creation of struct with required
+  Provides `defstruct/1` macro which allows creation of struct with required
   message keys (:id, :metadata)
   """
   defmacro __using__(_opts \\ []) do
     quote location: :keep do
       require unquote(__MODULE__)
-      import unquote(__MODULE__), only: [defmessage: 1]
+      import Kernel, except: [defstruct: 1]
+      import unquote(__MODULE__), only: [defstruct: 1]
     end
   end
 
@@ -130,6 +127,16 @@ defmodule Rill.Messaging.Message do
         %{metadata: %Metadata{} = other_metadata}
       ) do
     Metadata.follows?(metadata, other_metadata)
+  end
+
+  @doc "Builds struct for `struct_name`"
+  @spec build(struct_name :: module(), message_data :: %Read{}) :: struct()
+  def build(struct_name, %Read{} = message_data) do
+    data = message_data.data
+    metadata = message_data.metadata
+
+    msg = build(struct_name, data, metadata)
+    Map.put(msg, :id, message_data.id)
   end
 
   @doc "Builds struct for `struct_name`"

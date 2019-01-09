@@ -64,6 +64,22 @@ defmodule Rill.EntityProjection do
           projection :: module(),
           entity :: term(),
           dictionary :: %Dictionary{},
+          msg :: struct()
+        ) :: term()
+  def apply(
+        projection,
+        entity,
+        %Dictionary{} = dictionary,
+        %{__struct__: _} = msg
+      ) do
+    message_data = Read.build(msg)
+    apply(projection, entity, dictionary, message_data)
+  end
+
+  @spec apply(
+          projection :: module(),
+          entity :: term(),
+          dictionary :: %Dictionary{},
           messages_data :: Enumerable.t()
         ) :: term()
   def apply(projection, entity, %Dictionary{} = dictionary, messages_data) do

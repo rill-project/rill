@@ -1,36 +1,31 @@
 defmodule Rill.EntityProjectionTest do
   use AsyncCase
+  use Rill.EntityProjection.Controls
 
-  defmodule Person do
-    defstruct name: ""
-  end
-
-  defmodule Renamed do
-    use Rill, :message
-    defmessage([:name])
-  end
-
-  defmodule Projection do
-    use Rill, :projection
-
-    @impl true
-    deftranslate apply(%Renamed{} = renamed, person) do
-      Map.put(person, :name, renamed.name)
-    end
-  end
-
-  alias Rill.MessageStore.MessageData.Read
   alias Rill.EntityProjection
 
   describe "with single event" do
     test "applies changes to entity" do
-      person = %Person{name: "Joe"}
-      renamed = %Renamed{name: "Ben"}
-      message_data = Read.build(renamed)
+      entity = Entity.example()
+      msg = MessageData.SomeMessage.example()
 
-      new_person = EntityProjection.apply(Projection, person, message_data)
+      new_entity = EntityProjection.apply(Projection.Example, entity, msg)
 
-      assert new_person.name == "Ben"
+      assert new_entity.some_attribute == msg.some_attribute
+    end
+  end
+
+  describe "with multiple events" do
+    test "applies changes to entity" do
+      entity = Entity.example()
+      msg = MessageData.SomeMessage.example()
+      other_msg = MessageData.SomeOtherMessage.example()
+      msgs = [msg, other_msg]
+
+      new_entity = EntityProjection.apply(Projection.Example, entity, msgs)
+
+      assert new_entity.some_attribute == msg.some_attribute
+      assert new_entity.some_other_attribute == other_msg.some_other_attribute
     end
   end
 end

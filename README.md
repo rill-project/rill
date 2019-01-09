@@ -65,7 +65,7 @@ configuration.
 ```elixir
 defmodule Renamed do
   use Rill, :message
-  defmessage([:name])
+  defstruct([:name])
 end
 
 {:ok, pid} = Rill.MessageStore.Memory.Server.start_link()
@@ -80,7 +80,7 @@ Rill.MessageStore.write(session, message, "person")
 ```elixir
 defmodule Renamed do
   use Rill, :message
-  defmessage([:name])
+  defstruct([:name])
 end
 
 Rill.MessageStore.Mnesia.start()
@@ -98,7 +98,7 @@ Rill.MessageStore.write(session, message, "person")
 ```elixir
 defmodule Renamed do
   use Rill, :message
-  defmessage([:name])
+  defstruct([:name])
 end
 
 {:ok, _pid} = MyRepo.start_link([name: MyRepo])
@@ -118,14 +118,14 @@ end
 
 defmodule Renamed do
   use Rill, :message
-  defmessage([:name])
+  defstruct([:name])
 end
 
 defmodule Person.Projection do
   use Rill, :projection
 
   @impl Rill.EntityProjection
-  deftranslate apply(%Renamed{} = renamed, person) do
+  def apply(%Renamed{} = renamed, person) do
     Map.put(person, :name, renamed.name)
   end
 end
@@ -153,7 +153,7 @@ defmodule Handler do
   use Rill, :handler
 
   @impl Rill.Messaging.Handler
-  deftranslate handle(%Renamed{} = renamed, _session) do
+  def handle(%Renamed{} = renamed, _session) do
     IO.inspect(renamed)
   end
 end
@@ -222,7 +222,7 @@ can be piped.
 ```elixir
 defmodule Renamed do
   use Rill, :message
-  defmessage([:name])
+  defstruct([:name])
 end
 
 message = %Renamed{name: "foo"}
@@ -263,7 +263,7 @@ end
 
 defmodule Renamed do
   use Rill, :message
-  defmessage([:name])
+  defstruct([:name])
 end
 
 defmodule Person.Projection do
@@ -273,7 +273,7 @@ defmodule Person.Projection do
   # Pattern matching on the first argument it's REQUIRED to determine the
   # struct that needs to be used to decode the message coming from the
   # MessageStore
-  deftranslate apply(%Renamed{} = renamed, person) do
+  def apply(%Renamed{} = renamed, person) do
     Map.put(person, :name, renamed.name)
   end
 end
@@ -350,7 +350,7 @@ end
 ```elixir
 defmodule Renamed do
   use Rill, :message
-  defmessage([:name])
+  defstruct([:name])
 end
 
 defmodule Handler do
@@ -360,7 +360,7 @@ defmodule Handler do
   # Pattern matching on the first argument it's REQUIRED to determine the
   # struct that needs to be used to decode the message coming from the
   # MessageStore
-  deftranslate handle(%Renamed{} = renamed, _session) do
+  def handle(%Renamed{} = renamed, _session) do
     IO.inspect(renamed)
     IO.puts("hello")
   end
