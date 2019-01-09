@@ -7,6 +7,9 @@ defmodule Rill.MessageStore.Base do
   alias Rill.Session
   alias Rill.MessageStore.StreamName
 
+  require Rill.Try
+  import Rill.Try, only: [try_version: 1]
+
   @scribble tag: :message_store
 
   @spec read(
@@ -122,6 +125,17 @@ defmodule Rill.MessageStore.Base do
   def write_initial(session, message, stream_name)
       when not is_list(message) do
     write(session, message, stream_name, expected_version: :no_stream)
+  end
+
+  @spec write_once(
+          session :: Session.t(),
+          message :: struct(),
+          stream_name :: StreamName.t()
+        ) :: nil | non_neg_integer()
+  def write_once(%Session{} = session, message, stream_name) do
+    try_version do
+      write_initial(session, message, stream_name)
+    end
   end
 
   @spec get_next_position(

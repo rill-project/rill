@@ -244,8 +244,19 @@ Rill.MessageStore.write(session, message, "streamName", expected_version: versio
 
 #### Write initial message
 
+Raises exception if 1+ messages are present already on the stream
+
 ```elixir
 Rill.MessageStore.write_initial(session, message, "streamName")
+```
+
+#### Write one message
+
+Like `write_initial` but instead of raising, returns `nil`. If a
+message is written, a non-negative integer is returned instead
+
+```elixir
+Rill.MessageStore.write_once(session, message, "streamName")
 ```
 
 #### Write batch of messages to the same stream

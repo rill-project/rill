@@ -33,6 +33,14 @@ defmodule Rill.MessageStore do
               message :: struct(),
               stream_name :: StreamName.t()
             ) :: non_neg_integer()
+  @doc """
+  Behaves like `write_initial` but instead of raising, it returns `nil`
+  """
+  @callback write_once(
+              session :: Session.t(),
+              message :: struct(),
+              stream_name :: StreamName.t()
+            ) :: nil | non_neg_integer()
 
   def read(%Session{} = session, stream_name, opts \\ [], fun \\ nil) do
     session.message_store.read(session, stream_name, opts, fun)
@@ -44,6 +52,10 @@ defmodule Rill.MessageStore do
 
   def write_initial(%Session{} = session, message, stream_name) do
     session.message_store.write_initial(session, message, stream_name)
+  end
+
+  def write_once(%Session{} = session, message, stream_name) do
+    session.message_store.write_once(session, message, stream_name)
   end
 
   defmacro __using__(_opts \\ []) do
@@ -62,6 +74,10 @@ defmodule Rill.MessageStore do
 
       def write_initial(session, message, stream_name) do
         unquote(base).write_initial(session, message, stream_name)
+      end
+
+      def write_once(session, message, stream_name) do
+        unquote(base).write_once(session, message, stream_name)
       end
 
       defoverridable unquote(__MODULE__)
